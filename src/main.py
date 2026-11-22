@@ -7,18 +7,19 @@ if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 from DataImportExploration import DataImportExploration
+from DataCleaningPreProcessing import DataCleaningPreProcessing
 
 
 def main():
-    print("=" * 80)
     print("Pipeline de Feature Analysis and Engineering - OURO (CLOSE)")
-    print("=" * 80)
 
     # ETAPA 1: Data Import and Exploration
     data_explorer = DataImportExploration()
     raw_df = data_explorer.run_exploration(verbose=True)
 
-
+    # ETAPA 2: Data Cleaning and Preprocessing
+    cleaner = DataCleaningPreProcessing(df=raw_df, target_col="Close")
+    cleaned_df = cleaner.run_cleaning(verbose=True, save_plots=True)
 
 if __name__ == "__main__":
     main()
