@@ -8,6 +8,7 @@ if str(src_dir) not in sys.path:
 
 from DataImportExploration import DataImportExploration
 from DataCleaningPreProcessing import DataCleaningPreProcessing
+from ExploratoryDataAnalysis import ExploratoryDataAnalysis
 
 
 def main():
@@ -20,6 +21,11 @@ def main():
     # ETAPA 2: Data Cleaning and Preprocessing
     cleaner = DataCleaningPreProcessing(df=raw_df, target_col="Close")
     cleaned_df = cleaner.run_cleaning(verbose=True, save_plots=True)
+
+    # ETAPA 3: Exploratory Data Analysis (EDA)
+    eda_analyzer = ExploratoryDataAnalysis(df=cleaned_df, target_col="Close")
+    eda_insights = eda_analyzer.run_eda(verbose=True)
+
 
 if __name__ == "__main__":
     main()
