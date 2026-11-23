@@ -152,6 +152,351 @@ Temporal Format           & Mixed strings  & \texttt{datetime64[ns]} \\
 \label{fig:cleaning_effects}
 \end{figure}
 
+% ==============================================================================
+% SUBSECTION: COMPREHENSIVE EXPLORATORY DATA ANALYSIS (EDA) - FULL PORTFOLIO EDITION
+% ==============================================================================
+
+\subsection{Exploratory Data Analysis (EDA)}
+\label{sec:eda}
+
+To extract deep financial and statistical insights without the constraints of academic page limits, an exhaustive suite of 26 dedicated visual artifacts and analytical tests was formulated and evaluated. This section analyzes every distribution, correlation, and temporal relationship in the dataset, culminating in a global synthesis panel.
+
+% ------------------------------------------------------------------------------
+% 1. TARGET VARIABLE ANALYSIS
+% ------------------------------------------------------------------------------
+\subsubsection{Target Variable In-Depth Characterization (\texttt{Close})}
+Understanding the empirical distribution of $y = \text{Close}$ is paramount for establishing whether standard Gaussian learning assumptions hold for neural predictive modeling.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[b]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/01_target_close_distribution.png}
+    \caption{Empirical vs. Theoretical Normal}
+    \label{fig:target_dist}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/02_target_close_qqplot.png}
+    \caption{Normal Q-Q Plot}
+    \label{fig:target_qq}
+\end{subfigure}
+\caption{Distributional and normality diagnostics for the target variable \texttt{Close}.}
+\label{fig:target_density_qq}
+\end{figure}
+
+As exhibited in Fig.~\ref{fig:target_density_qq}(a), the empirical density of \texttt{Close} diverges severely from a Gaussian bell curve. With a sample mean of $\mu = \$1{,}274.96$ and median of $\$1{,}251.10$, the distribution displays an extended right tail reaching $\$5{,}377.30$. The Fisher-Pearson skewness of $\gamma_1 = 1.4181$ confirms substantial positive asymmetry, whereas the sample kurtosis of $\gamma_2 = 3.7962$ indicates a leptokurtic profile. The normal Q-Q plot in Fig.~\ref{fig:target_density_qq}(b) exhibits pronounced upward convex curvature, demonstrating that extreme values depart significantly from standard normality.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[b]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/03_target_close_timeseries.png}
+    \caption{Historical Trajectory (2000--2026)}
+    \label{fig:target_ts}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/04_target_close_violin.png}
+    \caption{Violin and Quartile Spread}
+    \label{fig:target_violin}
+\end{subfigure}
+\caption{Temporal trajectory and non-parametric density dispersion of the target \texttt{Close}.}
+\label{fig:target_ts_violin}
+\end{figure}
+
+Fig.~\ref{fig:target_ts_violin}(a) illustrates the non-stationary historical trajectory over the 26-year timeline (2000--2026). The asset transitioned from a multi-year low-volatility baseline ($\$255$--$\$450$ during 2000--2005) into a prolonged secular bull market accelerated by systemic inflation and macroeconomic crises, breaching $\$5{,}300$ by 2026. The violin plot in Fig.~\ref{fig:target_ts_violin}(b) reinforces this structure, illustrating that while 50\% of all daily closes clustered between $\$651.70$ ($Q_1$) and $\$1{,}695.65$ ($Q_3$), the upper probability density remains elongated.
+
+% ------------------------------------------------------------------------------
+% 2. FEATURE DISTRIBUTIONS
+% ------------------------------------------------------------------------------
+\subsubsection{Univariate Feature Distributions and Density Profiles}
+Individual feature histograms and kernel density estimators were plotted across all six numeric candidate features to evaluate their internal morphology.
+
+\begin{figure*}[htbp]
+\centering
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/05_dist_open.png}
+    \caption{\texttt{Open} Distribution ($\gamma_1=1.42$)}
+    \label{fig:dist_open}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/06_dist_high.png}
+    \caption{\texttt{High} Distribution ($\gamma_1=1.42$)}
+    \label{fig:dist_high}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/07_dist_low.png}
+    \caption{\texttt{Low} Distribution ($\gamma_1=1.42$)}
+    \label{fig:dist_low}
+\end{subfigure}
+\caption{Empirical density distributions for price input variables (\texttt{Open}, \texttt{High}, \texttt{Low}).}
+\label{fig:dist_prices}
+\end{figure*}
+
+\begin{figure*}[htbp]
+\centering
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/08_dist_volume.png}
+    \caption{\texttt{Volume} Distribution (Log Scale)}
+    \label{fig:dist_volume}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/09_dist_sales.png}
+    \caption{\texttt{Sales} Distribution ($\gamma_1=-0.01$)}
+    \label{fig:dist_sales}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/10_dist_weight.png}
+    \caption{\texttt{weight} Distribution ($\gamma_1=2.45$)}
+    \label{fig:dist_weight}
+\end{subfigure}
+\caption{Empirical density distributions for non-price input variables (\texttt{Volume}, \texttt{Sales}, \texttt{weight}).}
+\label{fig:dist_non_prices}
+\end{figure*}
+
+\begin{itemize}
+    \item \textbf{Price Inputs (\texttt{Open}, \texttt{High}, \texttt{Low}):} As seen in Fig.~\ref{fig:dist_prices}(a)--(c), the three price attributes replicate almost identically the right-skewed profile of the target ($\gamma_1 \approx 1.42$, $\gamma_2 \approx 3.80$). This morphological congruence reflects their shared intraday origin.
+    \item \textbf{\texttt{Volume}:} In contrast to the price series, the \texttt{Volume} attribute shown in Fig.~\ref{fig:dist_non_prices}(a) displays extreme Pareto-like positive skewness ($\gamma_1 = 9.87$, $\gamma_2 = 115.42$). The raw values range from $1$ to $386{,}334$ with a median of only $130$. Displaying this feature on a logarithmic horizontal scale proves that trading volume follows a multi-modal log-normal distribution, signaling that logarithmic transformation is indispensable.
+    \item \textbf{\texttt{Sales}:} Fig.~\ref{fig:dist_non_prices}(b) demonstrates that after time-series interpolation, \texttt{Sales} forms a bounded, approximately uniform distribution between $\$1{,}015$ and $\$49{,}988$ with negligible skewness ($\gamma_1 = -0.0084$) and platykurtic dispersion ($\gamma_2 = -1.1895$).
+    \item \textbf{\texttt{weight}:} Fig.~\ref{fig:dist_non_prices}(c) illustrates a moderately right-skewed profile ($\gamma_1 = 2.45$, $\gamma_2 = 10.32$) bounded between $11.66$ and $364.23$, with the predominant mass centered near $54.67$.
+\end{itemize}
+
+% ------------------------------------------------------------------------------
+% 3. OUTLIER ANALYSIS AND BOXPLOTS
+% ------------------------------------------------------------------------------
+\subsubsection{Outlier Identification and Interquartile Boxplot Profiling}
+To isolate potential leverage points that could destabilize neural network backpropagation, Tukey boxplots were constructed for each domain attribute.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{../outputs/eda/11_boxplot_prices_comparison.png}
+\caption{Comparative interquartile boxplot across price variables (\texttt{Open}, \texttt{High}, \texttt{Low}, \texttt{Close}), showing identical statistical quartiles and shared secular upper outliers.}
+\label{fig:boxplot_prices}
+\end{figure}
+
+Fig.~\ref{fig:boxplot_prices} provides a unified visualization of the four price attributes. The medians, interquartile boxes ($[Q_1, Q_3]$), and upper whiskers align perfectly, confirming that daily trading ranges are compact relative to the multi-year price trajectory. The red markers indicate the sample mean ($\approx \$1{,}275$), which is systematically pulled upward by the secular points beyond the upper Tukey fence ($\$3{,}261$).
+
+\begin{figure*}[htbp]
+\centering
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/12_boxplot_volume.png}
+    \caption{\texttt{Volume} Boxplot (Heavy Upper Spikes)}
+    \label{fig:box_volume}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/13_boxplot_sales.png}
+    \caption{\texttt{Sales} Boxplot (Zero Outliers)}
+    \label{fig:box_sales}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/14_boxplot_weight.png}
+    \caption{\texttt{weight} Boxplot (Upper Extrema)}
+    \label{fig:box_weight}
+\end{subfigure}
+\caption{Univariate boxplot profiles for non-price attributes, demonstrating contrasting dispersion patterns.}
+\label{fig:box_non_prices}
+\end{figure*}
+
+Fig.~\ref{fig:box_non_prices}(a)--(c) contrasts the non-price features:
+\begin{itemize}
+    \item \texttt{Volume} (Fig.~\ref{fig:box_non_prices}(a)) displays severe compression: the entire IQR ($29$ to $520$) is dwarfed by extreme trading spikes reaching $386{,}334$.
+    \item \texttt{Sales} (Fig.~\ref{fig:box_non_prices}(b)) exhibits zero points outside the Tukey fences, confirming that its values span a controlled, well-behaved operational domain.
+    \item \texttt{weight} (Fig.~\ref{fig:box_non_prices}(c)) identifies approximately $210$ points above the upper fence of $124.80$, extending up to $364.23$.
+\end{itemize}
+
+% ------------------------------------------------------------------------------
+% 4. BIVARIATE RELATIONSHIPS WITH TARGET
+% ------------------------------------------------------------------------------
+\subsubsection{Bivariate Feature Dependencies Relative to the Target}
+Evaluating how each candidate input feature relates to $y = \text{Close}$ is essential for uncovering linear versus non-linear relationships.
+
+\begin{figure*}[htbp]
+\centering
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/15_scatter_open_vs_close.png}
+    \caption{\texttt{Open} vs. \texttt{Close} ($r = 0.9998$)}
+    \label{fig:scatter_open}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/16_scatter_high_vs_close.png}
+    \caption{\texttt{High} vs. \texttt{Close} ($r = 0.9998$)}
+    \label{fig:scatter_high}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/17_scatter_low_vs_close.png}
+    \caption{\texttt{Low} vs. \texttt{Close} ($r = 0.9999$)}
+    \label{fig:scatter_low}
+\end{subfigure}
+\caption{Bivariate scatter plots of price input variables against the target \texttt{Close}, demonstrating strict collapse onto the identity diagonal ($y = x$).}
+\label{fig:scatters_prices}
+\end{figure*}
+
+\begin{figure*}[htbp]
+\centering
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/18_scatter_volume_vs_close.png}
+    \caption{\texttt{Volume} (Log) vs. \texttt{Close} ($r = 0.0193$)}
+    \label{fig:scatter_volume}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/19_scatter_sales_vs_close.png}
+    \caption{\texttt{Sales} vs. \texttt{Close} ($r = -0.0073$)}
+    \label{fig:scatter_sales}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/20_scatter_weight_vs_close.png}
+    \caption{\texttt{weight} vs. \texttt{Close} ($r = -0.0032$)}
+    \label{fig:scatter_weight}
+\end{subfigure}
+\caption{Bivariate scatter plots of non-price variables against \texttt{Close}, displaying orthogonal dispersion and absence of direct linear coupling.}
+\label{fig:scatters_non_prices}
+\end{figure*}
+
+\begin{enumerate}
+    \item \textbf{Price Features:} As illustrated in Fig.~\ref{fig:scatters_prices}(a)--(c), the scatter plots of \texttt{Open}, \texttt{High}, and \texttt{Low} against \texttt{Close} collapse entirely onto the theoretical identity line $y = x$. Correlation coefficients are $r = 0.9998$ for \texttt{Open}, $r = 0.9998$ for \texttt{High}, and $r = 0.9999$ for \texttt{Low}. While these features offer high explanatory power, their simultaneous utilization in an unconstrained neural network results in extreme rank deficiency, gradient saturation, and redundant parameter allocation.
+    \item \textbf{Non-Price Features:} In sharp contrast, Fig.~\ref{fig:scatters_non_prices}(a)--(c) demonstrates that \texttt{Volume}, \texttt{Sales}, and \texttt{weight} show no zero-order linear correlation with \texttt{Close}. Fitted trend lines remain horizontal ($m \approx 0$). Plotting \texttt{Volume} on a logarithmic scale (Fig.~\ref{fig:scatters_non_prices}(a)) confirms that trading activity spans multiple orders of magnitude across both low-price and high-price regimes. Consequently, raw values of \texttt{Sales} and \texttt{weight} cannot directly predict closing levels without feature engineering.
+\end{enumerate}
+
+% ------------------------------------------------------------------------------
+% 5. CORRELATION AND MULTICOLLINEARITY
+% ------------------------------------------------------------------------------
+\subsubsection{Linear and Non-Linear Correlation Heatmaps}
+To formalize the dependency structure, both the Pearson linear correlation matrix and the Spearman rank monotonic correlation matrix were evaluated across all seven variables.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[b]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/21_correlation_matrix_pearson.png}
+    \caption{Pearson Heatmap ($r$)}
+    \label{fig:heatmap_pearson}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/22_correlation_matrix_spearman.png}
+    \caption{Spearman Heatmap ($\rho$)}
+    \label{fig:heatmap_spearman}
+\end{subfigure}
+\caption{Cross-attribute correlation heatmaps: (a) linear Pearson coefficients and (b) monotonic rank Spearman coefficients.}
+\label{fig:heatmaps}
+\end{figure}
+
+The Pearson heatmap in Fig.~\ref{fig:heatmaps}(a) highlights a sharp block-diagonal dichotomy: the price block formed by $\{\text{Open}, \text{High}, \text{Low}, \text{Close}\}$ possesses mutual cross-correlations exceeding $0.9997$, whereas their correlations with $\{\text{Volume}, \text{Sales}, \text{weight}\}$ are strictly $|r| \le 0.033$. The Spearman rank heatmap in Fig.~\ref{fig:heatmaps}(b) confirms that even when monotonic rank transformations are applied, \texttt{Sales} ($\rho = -0.0068$) and \texttt{weight} ($\rho = -0.0019$) remain completely decoupled from \texttt{Close}. However, \texttt{Volume} shows an increased Spearman correlation of $\rho = 0.0821$, indicating that higher trading volume tends monotonically to accompany advanced market regimes.
+
+% ------------------------------------------------------------------------------
+% 6. TEMPORAL DYNAMICS AND VOLATILITY
+% ------------------------------------------------------------------------------
+\subsubsection{Temporal Regimes, Seasonality, and Volatility Dynamics}
+Financial asset prices are strictly time-ordered stochastic processes. Four specialized charts were synthesized to extract macroeconomic and volatility properties.
+
+\begin{figure*}[htbp]
+\centering
+\begin{subfigure}[b]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/23_annual_close_boxplots.png}
+    \caption{Annual Boxplots of \texttt{Close} (2000--2026)}
+    \label{fig:annual_boxplots}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/24_monthly_seasonality.png}
+    \caption{Monthly Mean Price Seasonality}
+    \label{fig:monthly_seasonality}
+\end{subfigure}
+\caption{Macroeconomic temporal patterns: (a) annual price drift and volatility expansion, and (b) monthly seasonality breakdown.}
+\label{fig:temporal_macro}
+\end{figure*}
+
+\begin{figure*}[htbp]
+\centering
+\begin{subfigure}[b]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/25_rolling_volatility_30d.png}
+    \caption{30-Day Rolling Price Volatility ($\sigma_{30}$)}
+    \label{fig:rolling_vol}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../outputs/eda/26_spread_vs_volume.png}
+    \caption{Intraday Spread ($\text{High}-\text{Low}$) vs. \texttt{Volume}}
+    \label{fig:spread_volume}
+\end{subfigure}
+\caption{Financial market dynamics: (a) volatility clustering across historical crises, and (b) semi-logarithmic relationship between price spread and liquidity.}
+\label{fig:financial_microstructure}
+\end{figure*}
+
+\begin{itemize}
+    \item \textbf{Annual Price Evolution:} Fig.~\ref{fig:temporal_macro}(a) displays annual boxplots across all 26 years. The annual median rose monotonically from $\$279$ in 2000 to peak above $\$5{,}300$ in 2026. Crucially, the vertical height of the boxes (annual IQR) expanded dramatically after 2020, revealing heteroscedastic volatility expansion.
+    \item \textbf{Seasonality Diagnostics:} Fig.~\ref{fig:temporal_macro}(b) plots average monthly gold prices. While January and September show modest upward momentum due to institutional portfolio rebalancing, price variations across months remain within a narrow band, proving that gold lacks deterministic calendar seasonality.
+    \item \textbf{Volatility Clustering:} Fig.~\ref{fig:financial_microstructure}(a) tracks the 30-day rolling standard deviation of \texttt{Close}. Severe volatility spikes delineate historic market shocks: the 2008 Global Financial Crisis, the 2011 sovereign debt surge, the 2020 pandemic dislocation, and the unprecedented 2024--2026 breakout where rolling standard deviation surpassed $\$350$ USD. This validates Mandelbrotian volatility clustering.
+    \item \textbf{Spread-Volume Microstructure:} Fig.~\ref{fig:financial_microstructure}(b) correlates intraday volatility (defined as the absolute spread $\text{High} - \text{Low}$) with daily \texttt{Volume} on a semi-log scale. Days with elevated trading volume correlate with wider intraday price swings, confirming that market activity expands under volatile price discovery.
+\end{itemize}
+
+% ------------------------------------------------------------------------------
+% 7. GLOBAL SYNTHESIS AND STRATEGIC IMPLICATIONS
+% ------------------------------------------------------------------------------
+\subsubsection{Global Synthesis and Strategic Implications for Next Stages}
+Table~\ref{tab:eda_statistical_properties} compiles the summary diagnostics for all evaluated features. In addition, Fig.~\ref{fig:eda_synthesis} presents a unified multi-panel dashboard synthesizing the six primary empirical discoveries of this phase.
+
+\begin{table}[htbp]
+\caption{Morphological and Correlation Diagnostics ($N = 6{,}399$)}
+\label{tab:eda_statistical_properties}
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Attribute} & \textbf{Skewness} ($\gamma_1$) & \textbf{Kurtosis} ($\gamma_2$) & \textbf{Pearson} ($r$) & \textbf{Spearman} ($\rho$) \\
+\midrule
+\texttt{Open}   & 1.4172  & 3.7915  & 0.9998  & 0.9997 \\
+\texttt{High}   & 1.4198  & 3.8051  & 0.9998  & 0.9997 \\
+\texttt{Low}    & 1.4165  & 3.7932  & 0.9999  & 0.9998 \\
+\texttt{Volume} & 9.8712  & 115.421 & 0.0193  & 0.0821 \\
+\texttt{Sales}  & -0.0084 & -1.1895 & -0.0073 & -0.0068 \\
+\texttt{weight} & 2.4518  & 10.3214 & -0.0032 & -0.0019 \\
+\textbf{\texttt{Close}} (Target) & \textbf{1.4181} & \textbf{3.7962} & \textbf{1.0000} & \textbf{1.0000} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{../outputs/eda/eda_ieee_synthesis.png}
+\caption{Exploratory Data Analysis (EDA) synthesis across the 26-year gold dataset: (a) empirical density and non-normal right-skewed profile of $\text{Close}$, (b) Q-Q plot highlighting heavy upper tails, (c) historical price trajectory exhibiting secular bull regimes, (d) cross-attribute Pearson correlation matrix exposing price multicollinearity, (e) bivariate identity alignment between $\text{Open}$ and $\text{Close}$, and (f) semi-logarithmic dispersion of daily $\text{Volume}$ against $\text{Close}$.}
+\label{fig:eda_synthesis}
+\end{figure*}
+
+
 \section{Results}
 
 \section{Discussion}
