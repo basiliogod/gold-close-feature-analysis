@@ -5,3 +5,11 @@ venv/
 flights_sample_3m.csv
 .vscode/
 .venv/
+
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
