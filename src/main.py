@@ -9,6 +9,7 @@ if str(src_dir) not in sys.path:
 from DataImportExploration import DataImportExploration
 from DataCleaningPreProcessing import DataCleaningPreProcessing
 from ExploratoryDataAnalysis import ExploratoryDataAnalysis
+from FeatureTransformation import FeatureTransformation
 
 
 def main():
@@ -26,6 +27,9 @@ def main():
     eda_analyzer = ExploratoryDataAnalysis(df=cleaned_df, target_col="Close")
     eda_insights = eda_analyzer.run_eda(verbose=True)
 
+    # ETAPA 4: Feature Transformation Techniques
+    transformer = FeatureTransformation(df=cleaned_df, target_col="Close")
+    transformed_data = transformer.run_transformation(verbose=True, save_plots=True)
 
 if __name__ == "__main__":
     main()
