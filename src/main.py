@@ -10,6 +10,7 @@ from DataImportExploration import DataImportExploration
 from DataCleaningPreProcessing import DataCleaningPreProcessing
 from ExploratoryDataAnalysis import ExploratoryDataAnalysis
 from FeatureTransformation import FeatureTransformation
+from FeatureSelection import FeatureSelection
 
 
 def main():
@@ -30,6 +31,11 @@ def main():
     # ETAPA 4: Feature Transformation Techniques
     transformer = FeatureTransformation(df=cleaned_df, target_col="Close")
     transformed_data = transformer.run_transformation(verbose=True, save_plots=True)
+
+    # ETAPA 5: Feature Selection Methods
+    selector = FeatureSelection(df=transformed_data["df_hybrid"], target_col="Close")
+    selection_results = selector.run_selection(verbose=True, save_plots=True)
+
 
 if __name__ == "__main__":
     main()
