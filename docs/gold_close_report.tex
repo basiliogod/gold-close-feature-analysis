@@ -755,6 +755,139 @@ Based on rigorous empirical criteria, two formal rules of elimination were enfor
 \end{figure*}
 
 
+% ==============================================================================
+% SUBSECTION: FEATURE ENGINEERING 
+% ==============================================================================
+
+\subsection{Feature Engineering}
+\label{sec:feature_engineering}
+
+While feature selection pruned irrelevant and collinear raw attributes ($\text{Sales}$ and $\text{weight}$), feature engineering aims to synthesize domain-informed predictors from the surviving physical attributes ($\text{Open}$, $\text{High}$, $\text{Low}$, $\text{Volume}$) to enrich the representational space of the data. Crucially, all engineered features were computed on the physical cleaned domain prior to final Z-score standardization to preserve mathematical interpretability, and every rolling temporal feature was restricted exclusively to causal operations on input variables—strictly prohibiting any target leakage from $\text{Close}$.
+
+\subsubsection{Synthesized Financial Features and Mathematical Formulations}
+Eight domain-specific financial predictors spanning intraday price geometry, directional bias, trend inertia, volatility regimes, and market depth were formulated:
+
+\begin{enumerate}
+    \item \textbf{High-Low Envelope Midpoint (\texttt{HL\_Midpoint}):}
+    \begin{equation}
+        \text{HL\_Midpoint}_t = \frac{\text{High}_t + \text{Low}_t}{2}
+    \end{equation}
+    Replaces the redundant pair $\{\text{High}_t, \text{Low}_t\}$ with their geometric center of price discovery, preserving session equilibrium while halving collinear dimensionality.
+    
+    \item \textbf{Absolute Intraday Spread (\texttt{Intraday\_Spread}):}
+    \begin{equation}
+        \text{Intraday\_Spread}_t = \text{High}_t - \text{Low}_t
+    \end{equation}
+    Quantifies absolute intra-session price excursion and volatility expansion in nominal USD.
+    
+    \item \textbf{Relative Price-Normalized Spread (\texttt{Relative\_Spread}):}
+    \begin{equation}
+        \text{Relative\_Spread}_t = \frac{\text{High}_t - \text{Low}_t}{\text{Open}_t}
+    \end{equation}
+    Eliminates secular price inflation drift by expressing daily trading amplitude as a percentage of the opening quotation, enabling consistent volatility comparisons between 2000 ($\$275$) and 2026 ($\$5{,}300$).
+    
+    \item \textbf{Directional Open-to-Midpoint Bias (\texttt{Open\_to\_Mid\_Pct}):}
+    \begin{equation}
+        \text{Open\_to\_Mid\_Pct}_t = \frac{\text{HL\_Midpoint}_t - \text{Open}_t}{\text{Open}_t}
+    \end{equation}
+    Captures net intra-session buying versus selling pressure relative to the opening auction. A positive value denotes sustained upward price discovery throughout the day.
+    
+    \item \textbf{Causal Moving Average Trends (\texttt{Open\_SMA\_7}, \texttt{Open\_SMA\_30}):}
+    \begin{equation}
+        \text{Open\_SMA}_k(t) = \frac{1}{k} \sum_{i=0}^{k-1} \text{Open}_{t-i}, \quad k \in \{7, 30\}
+    \end{equation}
+    Captures short-term (1-week) and medium-term (1-month) trend trajectories using purely lagged input prices, equipping feedforward neural networks with temporal memory without inducing target leakage.
+    
+    \item \textbf{Rolling Historical Volatility (\texttt{Open\_Volatility\_14}):}
+    \begin{equation}
+        \text{Open\_Volatility\_14}_t = \sqrt{\frac{1}{13}\sum_{\tau=t-13}^{t} \left(r_{\text{open}, \tau} - \bar{r}_{\text{open}}\right)^2}
+    \end{equation}
+    where $r_{\text{open}, \tau} = (\text{Open}_\tau - \text{Open}_{\tau-1}) / \text{Open}_{\tau-1}$. Measures 14-day rolling return dispersion to identify structural volatility clustering regimes.
+    
+    \item \textbf{Amihud-Inspired Liquidity Impact Proxy (\texttt{Liquidity\_Impact}):}
+    \begin{equation}
+        \text{Liquidity\_Impact}_t = \frac{\text{High}_t - \text{Low}_t}{\ln(1 + \text{Volume}_t)}
+    \end{equation}
+    Fuses price dispersion and log-compressed trading volume into a microstructure depth indicator, reflecting price sensitivity per logarithmic unit of traded liquidity.
+\end{enumerate}
+
+\subsubsection{Empirical Evaluation and Evidence of Information Gain}
+Table~\ref{tab:engineering_metrics} summarizes the statistical performance of all eight engineered predictors across linear correlation ($r$), Spearman rank correlation ($\rho$), and non-linear Mutual Information (MI) evaluated against both the nominal target ($\text{Close}$) and the stationary intraday return ($\frac{\text{Close} - \text{Open}}{\text{Open}}$).
+
+\begin{table*}[t]
+\caption{Quantitative Information Gain of Synthesized Features Relative to Target \texttt{Close} and Intraday Returns}
+\label{tab:engineering_metrics}
+\centering
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Engineered Feature} & \textbf{Pearson} ($\text{Close}$) & \textbf{Spearman} ($\text{Close}$) & \textbf{MI} ($\text{Close}$, nats) & \textbf{Pearson} (Return) & \textbf{MI} (Return, nats) & \textbf{Skewness} \\
+\midrule
+\texttt{HL\_Midpoint}        & \textbf{0.9999} & \textbf{0.9999} & \textbf{4.8054} & 0.0094  & 0.1217  & 1.4181 \\
+\texttt{Intraday\_Spread}    & 0.5430          & 0.6094          & 0.3695          & -0.1421 & 0.5172  & 12.0992 \\
+\texttt{Relative\_Spread}    & 0.1661          & 0.1997          & 0.1353          & -0.1176 & \textbf{1.0651} & 2.6872 \\
+\texttt{Open\_to\_Mid\_Pct}  & 0.0131          & 0.0263          & 0.1006          & \textbf{0.9213} & \textbf{1.3925} & -0.5278 \\
+\texttt{Open\_SMA\_7}        & 0.9993          & 0.9989          & 3.4313          & 0.0013  & 0.1041  & 1.3854 \\
+\texttt{Open\_SMA\_30}       & 0.9980          & 0.9958          & 3.0979          & 0.0038  & 0.1005  & 1.2757 \\
+\texttt{Open\_Volatility\_14}& 0.1023          & 0.0202          & \textbf{0.5923} & -0.0304 & 0.0286  & 2.5698 \\
+\texttt{Liquidity\_Impact}   & 0.5289          & 0.5664          & 0.3181          & -0.1093 & 0.4539  & 5.6787 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{../outputs/engineering/01_hl_midpoint_vs_open_error.png}
+\caption{Residual error density comparing the raw opening anchor ($\text{Close} - \text{Open}$) versus the engineered midpoint estimator ($\text{Close} - \text{HL\_Midpoint}$), illustrating a $47.3\%$ reduction in Mean Absolute Error.}
+\label{fig:hl_midpoint_error}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{../outputs/engineering/02_intraday_directional_bias.png}
+\caption{Linear alignment between the engineered directional bias (\texttt{Open\_to\_Mid\_Pct}) and real intraday percentage returns ($r = 0.9213$, $R^2 = 84.9\%$).}
+\label{fig:intraday_bias}
+\end{figure}
+
+\begin{enumerate}
+    \item \textbf{Anchor Precision Gain (\texttt{HL\_Midpoint}):} Fig.~\ref{fig:hl_midpoint_error} confirms that replacing raw $\text{Open}$ with $\text{HL\_Midpoint}$ shrinks point estimation error drastically: Mean Absolute Error drops from $\$8.15$ to $\$4.30$ (a \textbf{47.3\% error reduction}), and Root Mean Squared Error drops from $\$17.32$ to $\$8.82$ (a \textbf{49.1\% RMSE reduction}), while achieving a Mutual Information of $4.8054$ nats with $\text{Close}$.
+    \item \textbf{Intraday Directional Discovery (\texttt{Open\_to\_Mid\_Pct}):} As demonstrated in Fig.~\ref{fig:intraday_bias}, \texttt{Open\_to\_Mid\_Pct} achieves a Pearson correlation of \textbf{$r = +0.9213$} ($R^2 = 84.9\%$) and Mutual Information of $1.3925$ nats with the actual intraday price change $\frac{\text{Close} - \text{Open}}{\text{Open}}$. While raw price levels fail to distinguish bullish versus bearish intra-day direction, this engineered ratio directly encodes directional market sentiment.
+    \item \textbf{Temporal Inertia and Volatility Extraction:} Fig.~\ref{fig:rolling_trend_vol} visualizes the recent 1,000 sessions of \texttt{Open\_SMA\_7}, \texttt{Open\_SMA\_30}, and \texttt{Open\_Volatility\_14}. The moving averages smoothly track macroeconomic momentum ($\text{MI} > 3.09$ nats) without utilizing target lags, while the 14-day rolling volatility successfully captures structural volatility bursts ($\text{MI} = 0.5923$ nats) in a stationary domain.
+    \item \textbf{Contrast Against Discarded Raw Variables:} Fig.~\ref{fig:engineered_mi_contrast} directly benchmarks the Mutual Information of the newly synthesized predictors against the pruned original attributes. While raw $\text{Sales}$ ($0.0000$ nats) and $\text{weight}$ ($0.0040$ nats) yielded practically zero predictive utility, features such as \texttt{Open\_Volatility\_14} ($0.5923$ nats), \texttt{Intraday\_Spread} ($0.3695$ nats), and \texttt{Liquidity\_Impact} ($0.3181$ nats) extract substantial non-linear information.
+\end{enumerate}
+
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=0.92\textwidth]{../outputs/engineering/03_rolling_trend_and_volatility.png}
+\caption{Temporal evaluation of causal rolling predictors over the most recent 1,000 trading sessions: (a) \texttt{Close} tracked by \texttt{Open\_SMA\_7} and \texttt{Open\_SMA\_30}, and (b) stationary volatility clustering captured by \texttt{Open\_Volatility\_14}.}
+\label{fig:rolling_trend_vol}
+\end{figure*}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{../outputs/engineering/04_engineered_mi_vs_discarded.png}
+\caption{Mutual Information comparison benchmarking engineered features (green) against discarded non-price original features (red).}
+\label{fig:engineered_mi_contrast}
+\end{figure*}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{../outputs/engineering/05_engineered_correlation_heatmap.png}
+\caption{Cross-correlation matrix across all eight engineered predictors and the target $\text{Close}$.}
+\label{fig:engineered_heatmap}
+\end{figure}
+
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=0.92\textwidth]{../outputs/engineering/engineering_ieee_synthesis.png}
+\caption{Feature engineering synthesis dashboard: (a) estimation residual compression via \texttt{HL\_Midpoint}, (b) intraday return correlation via \texttt{Open\_to\_Mid\_Pct}, (c) Mutual Information hierarchy across synthesized features, and (d) rolling volatility regime detection.}
+\label{fig:engineering_synthesis}
+\end{figure*}
+
+\subsubsection{Conclusion on Feature Engineering Value}
+Fig.~\ref{fig:engineered_heatmap} and Fig.~\ref{fig:engineering_synthesis} confirm that the synthesized features provide significant, non-redundant predictive value. Specifically, \texttt{Open\_to\_Mid\_Pct}, \texttt{Relative\_Spread}, \texttt{Open\_Volatility\_14}, and \texttt{Liquidity\_Impact} introduce orthogonal stationary dimensions ($\text{MI} \in [0.10, 1.39]$ nats on prices and returns) that raw OHLC bars cannot express independently. Combined with \texttt{HL\_Midpoint} and \texttt{Open\_SMA\_7/30}, these features transform the input space into an enriched representation tailored for deep neural forecasting.
+
+
 \section{Results}
 
 \section{Discussion}

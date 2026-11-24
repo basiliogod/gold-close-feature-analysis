@@ -11,6 +11,7 @@ from DataCleaningPreProcessing import DataCleaningPreProcessing
 from ExploratoryDataAnalysis import ExploratoryDataAnalysis
 from FeatureTransformation import FeatureTransformation
 from FeatureSelection import FeatureSelection
+from FeatureEngineering import FeatureEngineering
 
 
 def main():
@@ -36,6 +37,9 @@ def main():
     selector = FeatureSelection(df=transformed_data["df_hybrid"], target_col="Close")
     selection_results = selector.run_selection(verbose=True, save_plots=True)
 
+    # ETAPA 6: Feature Engineering
+    engineer = FeatureEngineering(df_clean=cleaned_df, target_col="Close")
+    engineering_results = engineer.run_engineering(verbose=True, save_plots=True)
 
 if __name__ == "__main__":
     main()
