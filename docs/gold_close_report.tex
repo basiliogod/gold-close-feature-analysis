@@ -626,6 +626,135 @@ Based on rigorous empirical evaluation, the optimal transformation strategy for 
 This hybrid architecture selectively applies logarithmic compression to heavily skewed features ($\text{Volume}$ and $\text{weight}$), preserves linear uniformity in $\text{Sales}$, and unifies the entire feature manifold through Z-score standardization, providing optimal conditioning for neural network training.
 
 
+% ==============================================================================
+% SUBSECTION: FEATURE SELECTION METHODS - FULL PORTFOLIO EDITION
+% ==============================================================================
+
+\subsection{Feature Selection Methods}
+\label{sec:feature_selection}
+
+Feature selection is a critical inductive step in predictive modeling. Rather than indiscriminately supplying all available attributes to a learning algorithm, feature selection systematically filters out redundant collinearities and irrelevant stochastic noise. This section evaluates multicollinearity via the Variance Inflation Factor (VIF), measures linear and non-linear predictive dependency, and formally justifies the selected input feature subsets.
+
+\subsubsection{Theoretical Rationale: Why Feature Selection is Vital Before Modeling}
+Training an Artificial Neural Network (ANN) on uncurated, redundant features introduces severe architectural and numerical pathologies:
+\begin{enumerate}
+    \item \textbf{Curse of Dimensionality and Parameter Efficiency:} Every extraneous input variable expands the first hidden layer's weight tensor by $H$ parameters (where $H$ is the number of hidden units). By eliminating uninformative variables, we reduce parameter count, accelerate backpropagation iterations, and mitigate overfitting risks.
+    \item \textbf{Hessian Ill-Conditioning and Gradient Instability:} When input features exhibit correlation approaching unity ($r > 0.999$), the sample covariance matrix $\mathbf{\Sigma} = \frac{1}{N}\mathbf{X}^T\mathbf{X}$ approaches rank deficiency ($\det(\mathbf{\Sigma}) \to 0$). The condition number:
+    \begin{equation}
+        \kappa(\mathbf{\Sigma}) = \frac{\lambda_{\max}(\mathbf{\Sigma})}{\lambda_{\min}(\mathbf{\Sigma})} \gg 10^4
+    \end{equation}
+    diverges dramatically. In consequence, the local quadratic curvature of the loss surface becomes severely elongated, causing standard stochastic gradient descent (SGD) to oscillate wildly along the high-curvature ridge while making negligible progress along the true error minimum.
+    \item \textbf{Elimination of Spurious Correlations:} Spurious noise variables (such as uncorrelated synthetic features) can lead deep networks to memorize random in-sample noise, severely degrading generalization on out-of-sample test splits.
+\end{enumerate}
+
+\subsubsection{Multicollinearity Diagnostics via Variance Inflation Factor (VIF)}
+To quantify inter-feature redundancy, the Variance Inflation Factor (VIF) was evaluated for each candidate input feature. The VIF of the $j$-th feature measures how much the variance of an estimated regression coefficient is inflated due to collinearity with all other $M-1$ features:
+\begin{equation}
+    \text{VIF}_j = \frac{1}{1 - R_j^2}
+\end{equation}
+where $R_j^2$ is the coefficient of determination from regressing feature $x_j$ against the remaining input attributes. In standard econometric and machine learning literature, a threshold of $\text{VIF} > 5$ or $10$ indicates severe, problematic multicollinearity requiring remediation.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{../outputs/selection/01_vif_multicollinearity_bars.png}
+\caption{Variance Inflation Factor (VIF) on a logarithmic scale across candidate input features. The horizontal dashed line marks the critical threshold ($\text{VIF} = 10$). Price features exhibit catastrophic collinearity exceeding $2{,}500$, while non-price features remain strictly orthogonal ($\text{VIF} \approx 1.0$).}
+\label{fig:vif_bars}
+\end{figure}
+
+Fig.~\ref{fig:vif_bars} reveals an extreme divergence across feature classes:
+\begin{itemize}
+    \item The price attributes exhibit astronomical inflation: $\text{Open}$ ($\text{VIF} = 7{,}188.79$), $\text{High}$ ($\text{VIF} = 5{,}504.06$), and $\text{Low}$ ($\text{VIF} = 2{,}634.78$). These values exceed the critical threshold by over two orders of magnitude, establishing that $>99.98\%$ of their statistical variance is mutually shared.
+    \item In sharp contrast, $\text{Volume}$ ($\text{VIF} = 1.09$), $\text{Sales}$ ($\text{VIF} = 1.00$), and $\text{weight}$ ($\text{VIF} = 1.00$) show near-zero inter-feature collinearity, confirming their mutual orthogonality.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.88\columnwidth]{../outputs/selection/04_correlation_target_and_interfeature.png}
+\caption{Inter-feature and target Pearson correlation matrix, illustrating the acute block redundancy among price attributes and the absence of correlation for $\text{Sales}$ and $\text{weight}$.}
+\label{fig:interfeature_correlation}
+\end{figure}
+
+Fig.~\ref{fig:interfeature_correlation} reinforces this diagnostic through a pairwise heatmap: the upper-left $3 \times 3$ block displays inter-feature correlations of $r \ge 0.9998$, whereas the off-diagonal correlations with $\text{Sales}$ and $\text{weight}$ remain strictly bounded by $|r| \le 0.008$.
+
+\subsubsection{Predictive Dependency: Mutual Information and Regularized Importance}
+To assess whether candidate features contain true predictive signal relative to $y = \text{Close}$, three complementary evaluation frameworks were applied:
+\begin{enumerate}
+    \item \textbf{Mutual Information (MI) Regression:} Unlike Pearson correlation, which only detects linear dependency, Mutual Information evaluates entropy reduction and detects arbitrary non-linear and non-monotonic relationships:
+    \begin{equation}
+        I(X; Y) = \iint p(x, y) \ln \frac{p(x, y)}{p(x) p(y)} \, dx \, dy
+    \end{equation}
+    Estimated via $k$-nearest neighbors entropy estimators, MI values strictly satisfy $I(X; Y) \ge 0$, where $0$ denotes complete statistical independence.
+    \item \textbf{Random Forest Ensemble Gini Importance:} Measures the mean decrease in impurity across 100 bagged decision trees, accounting for non-linear interactions.
+    \item \textbf{Lasso L1 Regularization:} Solves the penalized objective:
+    \begin{equation}
+        \min_{\mathbf{w}} \frac{1}{2N} \|\mathbf{y} - \mathbf{X}\mathbf{w}\|_2^2 + \lambda \|\mathbf{w}\|_1
+    \end{equation}
+    Because the L1 norm ball possesses non-differentiable corners on coordinate axes, Lasso automatically drives strictly redundant and uninformative feature weights to zero.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{../outputs/selection/02_mutual_information_ranking.png}
+\caption{Ranking of candidate input features by Mutual Information with the target variable $\text{Close}$. Features below $0.1$ nats (red) carry negligible predictive information.}
+\label{fig:mi_ranking}
+\end{figure}
+
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=0.92\textwidth]{../outputs/selection/03_feature_importance_comparison.png}
+\caption{Model-based feature evaluation: (left) Random Forest relative Gini importance percentages, and (right) Lasso regularized coefficients with L1 sparsity penalty.}
+\label{fig:model_importances}
+\end{figure*}
+
+As illustrated in Fig.~\ref{fig:mi_ranking} and Fig.~\ref{fig:model_importances}:
+\begin{itemize}
+    \item \textbf{High-Information Features:} $\text{High}$ ($I = 4.83$ nats), $\text{Low}$ ($I = 4.79$ nats), and $\text{Open}$ ($I = 4.24$ nats) dominate the information hierarchy, accompanied by significant Random Forest importance ($\text{Low} = 51.09\%$, $\text{High} = 44.99\%$).
+    \item \textbf{\texttt{Volume}:} Exhibits $I = 0.2120$ nats of non-linear mutual information and a Pearson correlation of $r = 0.2471$. While smaller in magnitude than raw price levels, it provides unique, orthogonal liquidity information ($\text{VIF} = 1.09$).
+    \item \textbf{Uninformative Features (\texttt{Sales} and \texttt{weight}):} The $\text{Sales}$ attribute yields exactly $I = 0.0000$ nats of Mutual Information, confirming that it shares zero statistical information with gold closing prices. Similarly, $\text{weight}$ yields $I = 0.0040$ nats. Under Lasso L1 regularization (Fig.~\ref{fig:model_importances}, right), the coefficients for both $\text{Sales}$ and $\text{weight}$ are shrunk strictly to \textbf{0.000000}.
+\end{itemize}
+
+\begin{table*}[t]
+\caption{Comprehensive Feature Selection Metrics and Diagnostics ($N = 6{,}399$)}
+\label{tab:selection_summary}
+\centering
+\small
+\begin{tabular}{lrrrrrc}
+\toprule
+\textbf{Candidate Feature} & \textbf{Pearson} ($r$) & \textbf{Mutual Info} (nats) & \textbf{RF Importance} (\%) & \textbf{Lasso Coef} & \textbf{VIF (Raw)} & \textbf{Selection Verdict \& Justification} \\
+\midrule
+\texttt{Open}   & 0.9998 & 4.2360 & 3.92\%  & 0.4290  & 7,188.79 & \textbf{Retained} (Temporal anchor; low VIF in isolation) \\
+\texttt{High}   & 0.9998 & 4.8271 & 44.99\% & 0.2787  & 5,504.06 & \textbf{Pruned / Envelope} (Redundant with Open/Low) \\
+\texttt{Low}    & 0.9999 & 4.7908 & 51.09\% & 0.2910  & 2,634.78 & \textbf{Pruned / Envelope} (Redundant with Open/High) \\
+\texttt{Volume} & 0.2471 & 0.2120 & 0.00\%  & 0.0000  & 1.09     & \textbf{Retained} (Orthogonal market liquidity signal) \\
+\texttt{Sales}  & -0.0073& 0.0000 & 0.00\%  & 0.0000  & 1.00     & \textbf{Eliminated} (Zero mutual info; pure noise) \\
+\texttt{weight} & -0.0080& 0.0040 & 0.00\%  & 0.0000  & 1.00     & \textbf{Eliminated} (Negligible info; Lasso zero) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsubsection{Formal Elimination Criteria and Final Selected Subsets}
+Based on rigorous empirical criteria, two formal rules of elimination were enforced:
+\begin{enumerate}
+    \item \textbf{Noise Elimination Rule:} Any attribute satisfying $I(X; Y) < 0.05$ nats and receiving a zero coefficient under Lasso L1 regularized cross-validation is definitively pruned. Consequently, \textbf{\texttt{Sales}} and \textbf{\texttt{weight}} are permanently excluded from the predictive pipeline.
+    \item \textbf{Multicollinearity Resolution Rule:} When multiple features exhibit mutual cross-correlation $r > 0.999$ and $\text{VIF} > 1{,}000$, keeping all elements inflates model variance without providing additional degrees of freedom. Two candidate feature subsets are formulated:
+    \begin{itemize}
+        \item \textbf{Subset 1 (Parsimonious Orthogonal Subset):} Consists of $\{ \text{Open}, \text{Volume} \}$. The $\text{Open}$ price represents the initial unobserved boundary of the daily session, carrying genuine temporal precedence. When evaluating VIF on this subset alone, multicollinearity collapses completely:
+        \begin{equation}
+            \text{VIF}(\text{Open}) = 1.07, \quad \text{VIF}(\text{Volume}) = 1.07
+        \end{equation}
+        This subset provides optimal numerical conditioning for unregularized neural networks.
+        \item \textbf{Subset 2 (OHLC Price Envelope + Liquidity):} Consists of $\{ \text{Open}, \text{High}, \text{Low}, \text{Volume} \}$. This subset retains full session geometry for advanced neural architectures incorporating strong weight decay ($L_2$) or dropout regularization.
+    \end{itemize}
+\end{enumerate}
+
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=0.92\textwidth]{../outputs/selection/selection_ieee_synthesis.png}
+\caption{Feature selection synthesis dashboard: (a) logarithmic VIF bars demonstrating price multicollinearity, (b) Mutual Information ranking isolating uninformative attributes, (c) Random Forest Gini importance distribution, and (d) Lasso L1 sparsity coefficients confirming the zero-weight assignment to $\text{Sales}$ and $\text{weight}$.}
+\label{fig:selection_synthesis}
+\end{figure*}
+
+
 \section{Results}
 
 \section{Discussion}
