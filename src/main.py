@@ -12,6 +12,7 @@ from ExploratoryDataAnalysis import ExploratoryDataAnalysis
 from FeatureTransformation import FeatureTransformation
 from FeatureSelection import FeatureSelection
 from FeatureEngineering import FeatureEngineering
+from ComparativeAnalysis import ComparativeAnalysis
 
 
 def main():
@@ -40,6 +41,17 @@ def main():
     # ETAPA 6: Feature Engineering
     engineer = FeatureEngineering(df_clean=cleaned_df, target_col="Close")
     engineering_results = engineer.run_engineering(verbose=True, save_plots=True)
+
+    # ETAPA 7: Comparative Analysis and Reporting
+    comparator = ComparativeAnalysis(
+        df_clean=cleaned_df,
+        df_engineered=engineering_results["df_engineered"],
+        target_col="Close"
+    )
+    comparative_results = comparator.run_comparison(verbose=True, save_plots=True)
+
+    print("\nPipeline executado com sucesso!")
+
 
 if __name__ == "__main__":
     main()
