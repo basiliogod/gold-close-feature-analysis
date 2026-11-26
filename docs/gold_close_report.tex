@@ -11,10 +11,9 @@
 \usepackage{listings}
 \usepackage{subcaption}
 \usepackage{url}
-
+\usepackage{placeins} % Impede que figuras avancem para depois das referências
 
 \usepackage[hidelinks]{hyperref}
-
 
 \begin{document}
 
@@ -37,6 +36,8 @@ Feature Engineering, Feature Selection, Exploratory Data Analysis, Multicollinea
 \end{IEEEkeywords}
 
 \section{Introduction}
+\label{sec:introduction}
+
 Gold serves globally as a premier macroeconomic hedge against currency debasement, geopolitical uncertainty, and inflationary regimes. Modeling daily gold closing prices (\texttt{Close}) presents formidable mathematical challenges for Artificial Neural Networks (ANNs). Unlike stationary physical signals, raw financial tabular records exhibit pronounced heteroscedasticity, volatility clustering, disparate scales spanning five orders of magnitude, and extreme inter-feature multicollinearity among Open-High-Low-Close (OHLC) price quotations. Supplying raw, uncurated inputs directly to gradient-based neural optimizers frequently induces ill-conditioned loss landscapes, vanishing or exploding gradients, and poor out-of-sample extrapolation.
 
 Rather than treating neural networks as uncalibrated black boxes, this work implements a rigorous, modular seven-stage Python pipeline dedicated exclusively to data diagnosis, preprocessing, transformation, selection, and domain-specific feature synthesis on \texttt{Gold\_data.csv} ($N = 6{,}399$ trading days spanning August 2000 through March 2026). The primary contributions of this investigation are:
@@ -68,31 +69,34 @@ which represents the daily closing price of gold. The remaining seven attributes
 
 Table~\ref{tab:dataset_summary} details the statistical properties, data types, missing value counts, and zero occurrences across all attributes prior to any transformation.
 
-\begin{table*}[t]
+\begin{table*}[!t]
 \caption{Descriptive Statistics and Initial Data Profiling ($N = 6{,}399$)}
 \label{tab:dataset_summary}
 \centering
-\small
-\begin{tabular}{lcrrrrrrrrr}
-\hline
+\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcrrrrrrrr}
+\toprule
 \textbf{Variable} & \textbf{Role} & \textbf{Type} & \textbf{Missing} & \textbf{Zeros} & \textbf{Mean} & \textbf{Std. Dev.} & \textbf{Min} & \textbf{Median} & \textbf{Max} \\
-\hline
-\texttt{Date}   & Feature & String  & 0   (0.00\%)  & 0   & ---         & ---        & ---      & ---      & ---        \\
-\texttt{Open}   & Feature & Float64 & 0   (0.00\%)  & 0   & 1,274.89    & 782.87     & 255.00   & 1,251.60 & 5,415.70   \\
-\texttt{High}   & Feature & Float64 & 0   (0.00\%)  & 0   & 1,281.73    & 788.80     & 256.10   & 1,256.20 & 5,586.20   \\
-\texttt{Low}    & Feature & Float64 & 0   (0.00\%)  & 0   & 1,267.91    & 777.09     & 255.00   & 1,244.80 & 5,334.90   \\
-\texttt{Close}  & \textbf{Target} & Float64 & 0   (0.00\%)  & 0   & 1,274.96    & 783.12     & 255.10   & 1,251.10 & 5,377.30   \\
-\texttt{Volume} & Feature & Int64   & 0   (0.00\%)  & 418 & 4,282.54    & 24,051.64  & 0.00     & 117.00   & 386,334.00 \\
-\texttt{Sales}  & Feature & Float64 & 937 (14.64\%) & 0   & 25,302.83   & 14,182.08  & 1,015.41 & 25,123.10& 49,988.50  \\
-\texttt{weight} & Feature & Float64 & 0   (0.00\%)  & 0   & 60.62       & 28.87      & 11.66    & 54.67    & 364.23     \\
-\hline
-\end{tabular}
+\midrule
+\texttt{Date}   & Feature & String  & 0 (0.00\%)   & 0   & ---       & ---       & ---      & ---       & ---        \\
+\texttt{Open}   & Feature & Float64 & 0 (0.00\%)   & 0   & 1,274.89  & 782.87    & 255.00   & 1,251.60  & 5,415.70   \\
+\texttt{High}   & Feature & Float64 & 0 (0.00\%)   & 0   & 1,281.73  & 788.80    & 256.10   & 1,256.20  & 5,586.20   \\
+\texttt{Low}    & Feature & Float64 & 0 (0.00\%)   & 0   & 1,267.91  & 777.09    & 255.00   & 1,244.80  & 5,334.90   \\
+\texttt{Close}  & \textbf{Target} & Float64 & 0 (0.00\%)   & 0   & 1,274.96  & 783.12    & 255.10   & 1,251.10  & 5,377.30   \\
+\texttt{Volume} & Feature & Int64   & 0 (0.00\%)   & 418 & 4,282.54  & 24,051.64 & 0.00     & 117.00    & 386,334.00 \\
+\texttt{Sales}  & Feature & Float64 & 937 (14.64\%)& 0   & 25,302.83 & 14,182.08 & 1,015.41 & 25,123.10 & 49,988.50  \\
+\texttt{weight} & Feature & Float64 & 0 (0.00\%)   & 0   & 60.62     & 28.87     & 11.66    & 54.67     & 364.23     \\
+\bottomrule
+\end{tabular}%
+}
 \end{table*}
 
 \subsubsection{Target Variable Characterization}
 Understanding the statistical distribution of the target variable $y = \text{Close}$ is critical for selecting subsequent feature scaling and transformation methods. The distribution exhibits:
 \begin{itemize}
-    \item \textbf{Central Tendency and Dispersion:} A sample mean of $\mu = 1{,}274.96$ and standard deviation of $\sigma = 783.12$, with an interquartile range (IQR) spanning from $Q_1 = 651.70$ to $Q_3 = 1{,}695.65$.
+    \item \textbf{Central Tendency and Dispersion:} A sample mean of $\mu = \$1{,}274.96$ and standard deviation of $\sigma = \$783.12$, with an interquartile range (IQR) spanning from $Q_1 = \$651.70$ to $Q_3 = \$1{,}695.65$.
     \item \textbf{Skewness:} A Fisher-Pearson coefficient of skewness of $\gamma_1 = 1.4181$, indicating a pronounced right-tailed asymmetric distribution driven by historical secular bull market regimes in gold.
     \item \textbf{Kurtosis:} A sample kurtosis of $\gamma_2 = 3.7962$, confirming heavier tails than a normal distribution and the occurrence of significant price extensions.
 \end{itemize}
@@ -101,17 +105,18 @@ Understanding the statistical distribution of the target variable $y = \text{Clo
 An automated screening of the raw observations revealed four key categories of data quality irregularities that must be systematically addressed during the data cleaning stage:
 
 \begin{enumerate}
-    \item \textbf{Missing Values in \texttt{Sales}:} Exactly $937$ observations ($14.64\%$ of the dataset) have missing (\texttt{NaN}) entries in the \texttt{Sales} column. Since neural network architectures cannot process missing values directly, an appropriate imputation strategy (e.g., forward-fill or median interpolation) or feature evaluation is required.
+    \item \textbf{Missing Values in \texttt{Sales}:} Exactly $937$ observations ($14.64\%$ of the dataset) have missing (\texttt{NaN}) entries in the \texttt{Sales} column. Since neural network architectures cannot process missing values directly, an appropriate imputation strategy (e.g., forward-fill or linear interpolation) or feature evaluation is required.
     \item \textbf{Zero-Volume Regimes:} The \texttt{Volume} attribute contains $418$ instances of exact zero values ($6.53\%$). In financial asset pricing, zero daily volume frequently corresponds to non-trading holidays, exchange closures, or reporting latency, which distort liquidity modeling.
-    \item \textbf{Logical Price Boundary Inconsistencies:} In classical financial Open-High-Low-Close (OHLC) bar structures, the physical constraints $Low \le \min(Open, Close)$ and $High \ge \max(Open, Close)$ must hold strictly. Our screening identified:
+    \item \textbf{Logical Price Boundary Inconsistencies:} In classical financial Open-High-Low-Close (OHLC) bar structures, the physical constraints $\text{Low} \le \min(\text{Open}, \text{Close})$ and $\text{High} \ge \max(\text{Open}, \text{Close})$ must hold strictly. Our screening identified:
     \begin{itemize}
-        \item $1$ observation where $High < Low$.
-        \item $430$ observations where $Close \notin [Low, High]$.
+        \item $1$ observation where $\text{High} < \text{Low}$.
+        \item $430$ observations where $\text{Close} \notin [\text{Low}, \text{High}]$.
     \end{itemize}
     These anomalies point to transcription errors or inverted column mappings in the original source data that require reconciliation.
     \item \textbf{Temporal Representation Heterogeneity:} The \texttt{Date} attribute is currently formatted as a heterogeneous object string, containing $3{,}865$ dates with hyphen delimiters (e.g., \texttt{30-08-00}) and $2{,}534$ dates with slash delimiters (e.g., \texttt{1/9/2000}). Robust two-digit vs.\ four-digit year parsing is necessary to ensure chronological sorting and temporal integrity.
 \end{enumerate}
 
+\FloatBarrier
 \subsection{Data Cleaning and Preprocessing}
 \label{sec:data_cleaning}
 
@@ -132,7 +137,7 @@ Inspection of the raw dataset revealed $1$ observation where $\text{High} < \tex
     \text{High}^*_t &= \max(\text{High}_t, \text{Open}_t, \text{Close}_t) \\
     \text{Low}^*_t  &= \min(\text{Low}_t, \text{Open}_t, \text{Close}_t)
 \end{align}
-This formulation guarantees 100\% mathematical consistency with zero row discards.
+This formulation guarantees $100\%$ mathematical consistency with zero row discards.
 
 \subsubsection{Imputation of Missing Sales}
 A total of $937$ missing observations ($14.64\%$) were present in the \texttt{Sales} feature. Given the continuous, sequential nature of financial trading activity, mean or global median imputation would artificially flatten the variance and distort autocorrelation structures. Hence, a forward/backward-bounded piecewise linear time-series interpolation was employed:
@@ -144,49 +149,47 @@ where $t_a$ and $t_b$ represent the closest preceding and succeeding valid tradi
 \subsubsection{Zero-Volume Rectification}
 The \texttt{Volume} variable exhibited $418$ occurrences ($6.53\%$) of exact zeros, predominantly clustered in historical trading years (2000--2005) due to reporting latency on thin trading sessions. Because neural network workflows frequently apply logarithmic compression ($\ln(1 + \text{Volume})$), zero entries create artificial floor boundary artifacts. Zero-volume records were treated as temporary unrecorded liquidity windows and resolved via linear interpolation bounded by adjacent active sessions, raising the global minimum to $\text{Volume}_{\min} = 1$ without altering the heavy-tailed upper quantiles.
 
-\subsubsection{Price Outlier Justification: Secular Trend vs. Spurious Noise}
-Evaluating the price attributes ($\text{Close}$, $\text{Open}$, $\text{High}$, $\text{Low}$) under the standard Tukey interquartile range criterion ($Q_3 + 1.5 \times \text{IQR}$) identifies $213$ observations above $\$3{,}261.57$ (up to $\$5{,}377.30$) as statistical outliers. 
+\subsubsection{Price Outlier Justification: Secular Trend vs.\ Spurious Noise}
+Evaluating the price attributes ($\text{Close}$, $\text{Open}$, $\text{High}$, $\text{Low}$) under the standard Tukey interquartile range criterion ($Q_3 + 1.5 \times \text{IQR}$) identifies $213$ observations above $\$3{,}261.57$ (up to $\$5{,}377.30$) as statistical outliers.
 
-\textbf{Methodological Decision:} No clipping, winsorization, or trimming was performed on the price series or the target variable $\text{Close}$. These values correspond to authentic macroeconomic secular appreciation in gold prices observed between 2024 and 2026. Truncating these points would impose an artificial ceiling on the target distribution and severely degrade the predictive fidelity of any downstream neural network. Non-linear scaling will be addressed systematically in the Feature Transformation phase.
+\textbf{Methodological Decision:} No clipping, winsorization, or trimming was performed on the price series or the target variable $\text{Close}$. These values correspond to authentic macroeconomic secular appreciation in gold prices observed between 2024 and 2026. Truncating these points would impose an artificial ceiling on the target distribution and severely degrade the predictive fidelity of any downstream neural network. Non-linear scaling is addressed systematically in Section~\ref{sec:feature_transformation}.
 
 \begin{table}[htbp]
-\caption{Comparative Data Cleaning Metrics (Before vs. After)}
+\caption{Comparative Data Cleaning Metrics (Before vs.\ After)}
 \label{tab:cleaning_summary}
 \centering
 \small
-\begin{tabular}{lccc}
+\begin{tabular}{lcc}
 \toprule
-\textbf{Metric} & \textbf{Raw Data} & \textbf{Cleaned Data}  \\
+\textbf{Metric} & \textbf{Raw Data} & \textbf{Cleaned Data} \\
 \midrule
-Total Observations ($N$)   & 6,399          & 6,399     \\
-Missing \texttt{Sales}    & 937 (14.64\%)  & 0 (0.00\%)      \\
-Zero \texttt{Volume}      & 418 (6.53\%)   & 0 (0.00\%)      \\
-$\text{High} < \text{Low}$ & 1 & 0      \\
-$\text{Close} \notin [\text{Low}, \text{High}]$ & 430 & 0     \\
-Temporal Format           & Mixed strings  & \texttt{datetime64[ns]} \\
+Total Observations ($N$) & 6,399 & 6,399 \\
+Missing \texttt{Sales} & 937 (14.64\%) & 0 (0.00\%) \\
+Zero \texttt{Volume} & 418 (6.53\%) & 0 (0.00\%) \\
+$\text{High} < \text{Low}$ & 1 & 0 \\
+$\text{Close} \notin [\text{Low}, \text{High}]$ & 430 & 0 \\
+Temporal Format & Mixed strings & \texttt{datetime64[ns]} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{../outputs/cleaning_effects.png}
+\includegraphics[width=0.95\linewidth]{../outputs/cleaning_effects.png}
 \caption{Empirical impact of the preprocessing pipeline: (a) eradication of missing values in \texttt{Sales}, (b) elimination of OHLC price boundary violations, (c) rectification of zero-volume days, and (d) illustrative segment of continuous temporal interpolation for \texttt{Sales}.}
 \label{fig:cleaning_effects}
 \end{figure}
 
+\FloatBarrier
 % ==============================================================================
-% SUBSECTION: COMPREHENSIVE EXPLORATORY DATA ANALYSIS (EDA) - FULL PORTFOLIO EDITION
+% SUBSECTION: COMPREHENSIVE EXPLORATORY DATA ANALYSIS (EDA)
 % ==============================================================================
 
 \subsection{Exploratory Data Analysis (EDA)}
 \label{sec:eda}
 
-To extract deep financial and statistical insights without the constraints of academic page limits, an exhaustive suite of 26 dedicated visual artifacts and analytical tests was formulated and evaluated. This section analyzes every distribution, correlation, and temporal relationship in the dataset, culminating in a global synthesis panel.
+To extract deep financial and statistical insights, an exhaustive suite of 26 dedicated visual artifacts and analytical tests was formulated and evaluated. This subsection analyzes every distribution, correlation, and temporal relationship in the dataset, culminating in a global synthesis panel.
 
-% ------------------------------------------------------------------------------
-% 1. TARGET VARIABLE ANALYSIS
-% ------------------------------------------------------------------------------
 \subsubsection{Target Variable In-Depth Characterization (\texttt{Close})}
 Understanding the empirical distribution of $y = \text{Close}$ is paramount for establishing whether standard Gaussian learning assumptions hold for neural predictive modeling.
 
@@ -194,14 +197,14 @@ Understanding the empirical distribution of $y = \text{Close}$ is paramount for 
 \centering
 \begin{subfigure}[b]{0.48\columnwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/01_target_close_distribution.png}
-    \caption{Empirical vs. Theoretical Normal}
+    \includegraphics[width=\linewidth]{../outputs/eda/01_target_close_distribution.png}
+    \caption{Empirical vs. Normal}
     \label{fig:target_dist}
 \end{subfigure}
 \hfill
 \begin{subfigure}[b]{0.48\columnwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/02_target_close_qqplot.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/02_target_close_qqplot.png}
     \caption{Normal Q-Q Plot}
     \label{fig:target_qq}
 \end{subfigure}
@@ -215,48 +218,45 @@ As exhibited in Fig.~\ref{fig:target_density_qq}(a), the empirical density of \t
 \centering
 \begin{subfigure}[b]{0.48\columnwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/03_target_close_timeseries.png}
-    \caption{Historical Trajectory (2000--2026)}
+    \includegraphics[width=\linewidth]{../outputs/eda/03_target_close_timeseries.png}
+    \caption{Trajectory (2000--2026)}
     \label{fig:target_ts}
 \end{subfigure}
 \hfill
 \begin{subfigure}[b]{0.48\columnwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/04_target_close_violin.png}
-    \caption{Violin and Quartile Spread}
+    \includegraphics[width=\linewidth]{../outputs/eda/04_target_close_violin.png}
+    \caption{Violin \& Quartiles}
     \label{fig:target_violin}
 \end{subfigure}
 \caption{Temporal trajectory and non-parametric density dispersion of the target \texttt{Close}.}
 \label{fig:target_ts_violin}
 \end{figure}
 
-Fig.~\ref{fig:target_ts_violin}(a) illustrates the non-stationary historical trajectory over the 26-year timeline (2000--2026). The asset transitioned from a multi-year low-volatility baseline ($\$255$--$\$450$ during 2000--2005) into a prolonged secular bull market accelerated by systemic inflation and macroeconomic crises, breaching $\$5{,}300$ by 2026. The violin plot in Fig.~\ref{fig:target_ts_violin}(b) reinforces this structure, illustrating that while 50\% of all daily closes clustered between $\$651.70$ ($Q_1$) and $\$1{,}695.65$ ($Q_3$), the upper probability density remains elongated.
+Fig.~\ref{fig:target_ts_violin}(a) illustrates the non-stationary historical trajectory over the 26-year timeline (2000--2026). The asset transitioned from a multi-year low-volatility baseline ($\$255$--$\$450$ during 2000--2005) into a prolonged secular bull market accelerated by systemic inflation and macroeconomic crises, breaching $\$5{,}300$ by 2026. The violin plot in Fig.~\ref{fig:target_ts_violin}(b) reinforces this structure, illustrating that while $50\%$ of all daily closes clustered between $\$651.70$ ($Q_1$) and $\$1{,}695.65$ ($Q_3$), the upper probability density remains elongated.
 
-% ------------------------------------------------------------------------------
-% 2. FEATURE DISTRIBUTIONS
-% ------------------------------------------------------------------------------
 \subsubsection{Univariate Feature Distributions and Density Profiles}
 Individual feature histograms and kernel density estimators were plotted across all six numeric candidate features to evaluate their internal morphology.
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/05_dist_open.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/05_dist_open.png}
     \caption{\texttt{Open} Distribution ($\gamma_1=1.42$)}
     \label{fig:dist_open}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/06_dist_high.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/06_dist_high.png}
     \caption{\texttt{High} Distribution ($\gamma_1=1.42$)}
     \label{fig:dist_high}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/07_dist_low.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/07_dist_low.png}
     \caption{\texttt{Low} Distribution ($\gamma_1=1.42$)}
     \label{fig:dist_low}
 \end{subfigure}
@@ -264,25 +264,25 @@ Individual feature histograms and kernel density estimators were plotted across 
 \label{fig:dist_prices}
 \end{figure*}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/08_dist_volume.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/08_dist_volume.png}
     \caption{\texttt{Volume} Distribution (Log Scale)}
     \label{fig:dist_volume}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/09_dist_sales.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/09_dist_sales.png}
     \caption{\texttt{Sales} Distribution ($\gamma_1=-0.01$)}
     \label{fig:dist_sales}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/10_dist_weight.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/10_dist_weight.png}
     \caption{\texttt{weight} Distribution ($\gamma_1=2.45$)}
     \label{fig:dist_weight}
 \end{subfigure}
@@ -292,45 +292,42 @@ Individual feature histograms and kernel density estimators were plotted across 
 
 \begin{itemize}
     \item \textbf{Price Inputs (\texttt{Open}, \texttt{High}, \texttt{Low}):} As seen in Fig.~\ref{fig:dist_prices}(a)--(c), the three price attributes replicate almost identically the right-skewed profile of the target ($\gamma_1 \approx 1.42$, $\gamma_2 \approx 3.80$). This morphological congruence reflects their shared intraday origin.
-    \item \textbf{\texttt{Volume}:} In contrast to the price series, the \texttt{Volume} attribute shown in Fig.~\ref{fig:dist_non_prices}(a) displays extreme Pareto-like positive skewness ($\gamma_1 = 9.87$, $\gamma_2 = 115.42$). The raw values range from $1$ to $386{,}334$ with a median of only $130$. Displaying this feature on a logarithmic horizontal scale proves that trading volume follows a multi-modal log-normal distribution, signaling that logarithmic transformation is indispensable.
+    \item \textbf{\texttt{Volume}:} In contrast to the price series, the \texttt{Volume} attribute shown in Fig.~\ref{fig:dist_non_prices}(a) displays extreme Pareto-like positive skewness ($\gamma_1 = 9.87$, $\gamma_2 = 115.42$ on raw data; $\gamma_1 = 7.62$ post-rectification). The cleaned values range from $1$ to $386{,}334$ with a median of $130$. Displaying this feature on a logarithmic horizontal scale proves that trading volume follows a multi-modal log-normal distribution, signaling that logarithmic transformation is indispensable.
     \item \textbf{\texttt{Sales}:} Fig.~\ref{fig:dist_non_prices}(b) demonstrates that after time-series interpolation, \texttt{Sales} forms a bounded, approximately uniform distribution between $\$1{,}015$ and $\$49{,}988$ with negligible skewness ($\gamma_1 = -0.0084$) and platykurtic dispersion ($\gamma_2 = -1.1895$).
     \item \textbf{\texttt{weight}:} Fig.~\ref{fig:dist_non_prices}(c) illustrates a moderately right-skewed profile ($\gamma_1 = 2.45$, $\gamma_2 = 10.32$) bounded between $11.66$ and $364.23$, with the predominant mass centered near $54.67$.
 \end{itemize}
 
-% ------------------------------------------------------------------------------
-% 3. OUTLIER ANALYSIS AND BOXPLOTS
-% ------------------------------------------------------------------------------
 \subsubsection{Outlier Identification and Interquartile Boxplot Profiling}
 To isolate potential leverage points that could destabilize neural network backpropagation, Tukey boxplots were constructed for each domain attribute.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{../outputs/eda/11_boxplot_prices_comparison.png}
+\includegraphics[width=0.95\linewidth]{../outputs/eda/11_boxplot_prices_comparison.png}
 \caption{Comparative interquartile boxplot across price variables (\texttt{Open}, \texttt{High}, \texttt{Low}, \texttt{Close}), showing identical statistical quartiles and shared secular upper outliers.}
 \label{fig:boxplot_prices}
 \end{figure}
 
 Fig.~\ref{fig:boxplot_prices} provides a unified visualization of the four price attributes. The medians, interquartile boxes ($[Q_1, Q_3]$), and upper whiskers align perfectly, confirming that daily trading ranges are compact relative to the multi-year price trajectory. The red markers indicate the sample mean ($\approx \$1{,}275$), which is systematically pulled upward by the secular points beyond the upper Tukey fence ($\$3{,}261$).
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/12_boxplot_volume.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/12_boxplot_volume.png}
     \caption{\texttt{Volume} Boxplot (Heavy Upper Spikes)}
     \label{fig:box_volume}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/13_boxplot_sales.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/13_boxplot_sales.png}
     \caption{\texttt{Sales} Boxplot (Zero Outliers)}
     \label{fig:box_sales}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/14_boxplot_weight.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/14_boxplot_weight.png}
     \caption{\texttt{weight} Boxplot (Upper Extrema)}
     \label{fig:box_weight}
 \end{subfigure}
@@ -345,31 +342,28 @@ Fig.~\ref{fig:box_non_prices}(a)--(c) contrasts the non-price features:
     \item \texttt{weight} (Fig.~\ref{fig:box_non_prices}(c)) identifies approximately $210$ points above the upper fence of $124.80$, extending up to $364.23$.
 \end{itemize}
 
-% ------------------------------------------------------------------------------
-% 4. BIVARIATE RELATIONSHIPS WITH TARGET
-% ------------------------------------------------------------------------------
 \subsubsection{Bivariate Feature Dependencies Relative to the Target}
 Evaluating how each candidate input feature relates to $y = \text{Close}$ is essential for uncovering linear versus non-linear relationships.
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/15_scatter_open_vs_close.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/15_scatter_open_vs_close.png}
     \caption{\texttt{Open} vs. \texttt{Close} ($r = 0.9998$)}
     \label{fig:scatter_open}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/16_scatter_high_vs_close.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/16_scatter_high_vs_close.png}
     \caption{\texttt{High} vs. \texttt{Close} ($r = 0.9998$)}
     \label{fig:scatter_high}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/17_scatter_low_vs_close.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/17_scatter_low_vs_close.png}
     \caption{\texttt{Low} vs. \texttt{Close} ($r = 0.9999$)}
     \label{fig:scatter_low}
 \end{subfigure}
@@ -377,25 +371,25 @@ Evaluating how each candidate input feature relates to $y = \text{Close}$ is ess
 \label{fig:scatters_prices}
 \end{figure*}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/18_scatter_volume_vs_close.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/18_scatter_volume_vs_close.png}
     \caption{\texttt{Volume} (Log) vs. \texttt{Close} ($r = 0.0193$)}
     \label{fig:scatter_volume}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/19_scatter_sales_vs_close.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/19_scatter_sales_vs_close.png}
     \caption{\texttt{Sales} vs. \texttt{Close} ($r = -0.0073$)}
     \label{fig:scatter_sales}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.32\textwidth}
+\begin{subfigure}[b]{0.31\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/20_scatter_weight_vs_close.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/20_scatter_weight_vs_close.png}
     \caption{\texttt{weight} vs. \texttt{Close} ($r = -0.0032$)}
     \label{fig:scatter_weight}
 \end{subfigure}
@@ -408,9 +402,6 @@ Evaluating how each candidate input feature relates to $y = \text{Close}$ is ess
     \item \textbf{Non-Price Features:} In sharp contrast, Fig.~\ref{fig:scatters_non_prices}(a)--(c) demonstrates that \texttt{Volume}, \texttt{Sales}, and \texttt{weight} show no zero-order linear correlation with \texttt{Close}. Fitted trend lines remain horizontal ($m \approx 0$). Plotting \texttt{Volume} on a logarithmic scale (Fig.~\ref{fig:scatters_non_prices}(a)) confirms that trading activity spans multiple orders of magnitude across both low-price and high-price regimes. Consequently, raw values of \texttt{Sales} and \texttt{weight} cannot directly predict closing levels without feature engineering.
 \end{enumerate}
 
-% ------------------------------------------------------------------------------
-% 5. CORRELATION AND MULTICOLLINEARITY
-% ------------------------------------------------------------------------------
 \subsubsection{Linear and Non-Linear Correlation Heatmaps}
 To formalize the dependency structure, both the Pearson linear correlation matrix and the Spearman rank monotonic correlation matrix were evaluated across all seven variables.
 
@@ -418,14 +409,14 @@ To formalize the dependency structure, both the Pearson linear correlation matri
 \centering
 \begin{subfigure}[b]{0.48\columnwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/21_correlation_matrix_pearson.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/21_correlation_matrix_pearson.png}
     \caption{Pearson Heatmap ($r$)}
     \label{fig:heatmap_pearson}
 \end{subfigure}
 \hfill
 \begin{subfigure}[b]{0.48\columnwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/22_correlation_matrix_spearman.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/22_correlation_matrix_spearman.png}
     \caption{Spearman Heatmap ($\rho$)}
     \label{fig:heatmap_spearman}
 \end{subfigure}
@@ -435,24 +426,21 @@ To formalize the dependency structure, both the Pearson linear correlation matri
 
 The Pearson heatmap in Fig.~\ref{fig:heatmaps}(a) highlights a sharp block-diagonal dichotomy: the price block formed by $\{\text{Open}, \text{High}, \text{Low}, \text{Close}\}$ possesses mutual cross-correlations exceeding $0.9997$, whereas their correlations with $\{\text{Volume}, \text{Sales}, \text{weight}\}$ are strictly $|r| \le 0.033$. The Spearman rank heatmap in Fig.~\ref{fig:heatmaps}(b) confirms that even when monotonic rank transformations are applied, \texttt{Sales} ($\rho = -0.0068$) and \texttt{weight} ($\rho = -0.0019$) remain completely decoupled from \texttt{Close}. However, \texttt{Volume} shows an increased Spearman correlation of $\rho = 0.0821$, indicating that higher trading volume tends monotonically to accompany advanced market regimes.
 
-% ------------------------------------------------------------------------------
-% 6. TEMPORAL DYNAMICS AND VOLATILITY
-% ------------------------------------------------------------------------------
 \subsubsection{Temporal Regimes, Seasonality, and Volatility Dynamics}
 Financial asset prices are strictly time-ordered stochastic processes. Four specialized charts were synthesized to extract macroeconomic and volatility properties.
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\begin{subfigure}[b]{0.48\textwidth}
+\begin{subfigure}[b]{0.47\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/23_annual_close_boxplots.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/23_annual_close_boxplots.png}
     \caption{Annual Boxplots of \texttt{Close} (2000--2026)}
     \label{fig:annual_boxplots}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.48\textwidth}
+\begin{subfigure}[b]{0.47\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/24_monthly_seasonality.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/24_monthly_seasonality.png}
     \caption{Monthly Mean Price Seasonality}
     \label{fig:monthly_seasonality}
 \end{subfigure}
@@ -460,18 +448,18 @@ Financial asset prices are strictly time-ordered stochastic processes. Four spec
 \label{fig:temporal_macro}
 \end{figure*}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\begin{subfigure}[b]{0.48\textwidth}
+\begin{subfigure}[b]{0.47\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/25_rolling_volatility_30d.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/25_rolling_volatility_30d.png}
     \caption{30-Day Rolling Price Volatility ($\sigma_{30}$)}
     \label{fig:rolling_vol}
 \end{subfigure}
 \hfill
-\begin{subfigure}[b]{0.48\textwidth}
+\begin{subfigure}[b]{0.47\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../outputs/eda/26_spread_vs_volume.png}
+    \includegraphics[width=\linewidth]{../outputs/eda/26_spread_vs_volume.png}
     \caption{Intraday Spread ($\text{High}-\text{Low}$) vs. \texttt{Volume}}
     \label{fig:spread_volume}
 \end{subfigure}
@@ -486,9 +474,6 @@ Financial asset prices are strictly time-ordered stochastic processes. Four spec
     \item \textbf{Spread-Volume Microstructure:} Fig.~\ref{fig:financial_microstructure}(b) correlates intraday volatility (defined as the absolute spread $\text{High} - \text{Low}$) with daily \texttt{Volume} on a semi-log scale. Days with elevated trading volume correlate with wider intraday price swings, confirming that market activity expands under volatile price discovery.
 \end{itemize}
 
-% ------------------------------------------------------------------------------
-% 7. GLOBAL SYNTHESIS AND STRATEGIC IMPLICATIONS
-% ------------------------------------------------------------------------------
 \subsubsection{Global Synthesis and Strategic Implications for Next Stages}
 Table~\ref{tab:eda_statistical_properties} compiles the summary diagnostics for all evaluated features. In addition, Fig.~\ref{fig:eda_synthesis} presents a unified multi-panel dashboard synthesizing the six primary empirical discoveries of this phase.
 
@@ -496,15 +481,16 @@ Table~\ref{tab:eda_statistical_properties} compiles the summary diagnostics for 
 \caption{Morphological and Correlation Diagnostics ($N = 6{,}399$)}
 \label{tab:eda_statistical_properties}
 \centering
-\small
+\footnotesize
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lrrrr}
 \toprule
-\textbf{Attribute} & \textbf{Skewness} ($\gamma_1$) & \textbf{Kurtosis} ($\gamma_2$) & \textbf{Pearson} ($r$) & \textbf{Spearman} ($\rho$) \\
+\textbf{Attribute} & \textbf{Skew} ($\gamma_1$) & \textbf{Kurt} ($\gamma_2$) & \textbf{Pearson} ($r$) & \textbf{Spearman} ($\rho$) \\
 \midrule
 \texttt{Open}   & 1.4172  & 3.7915  & 0.9998  & 0.9997 \\
 \texttt{High}   & 1.4198  & 3.8051  & 0.9998  & 0.9997 \\
 \texttt{Low}    & 1.4165  & 3.7932  & 0.9999  & 0.9998 \\
-\texttt{Volume} & 9.8712  & 115.421 & 0.0193  & 0.0821 \\
+\texttt{Volume} & 9.8712  & 115.4210 & 0.0193  & 0.0821 \\
 \texttt{Sales}  & -0.0084 & -1.1895 & -0.0073 & -0.0068 \\
 \texttt{weight} & 2.4518  & 10.3214 & -0.0032 & -0.0019 \\
 \textbf{\texttt{Close}} (Target) & \textbf{1.4181} & \textbf{3.7962} & \textbf{1.0000} & \textbf{1.0000} \\
@@ -512,16 +498,16 @@ Table~\ref{tab:eda_statistical_properties} compiles the summary diagnostics for 
 \end{tabular}
 \end{table}
 
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.95\textwidth]{../outputs/eda/eda_ieee_synthesis.png}
+\includegraphics[width=0.92\textwidth,height=0.38\textheight,keepaspectratio]{../outputs/eda/eda_ieee_synthesis.png}
 \caption{Exploratory Data Analysis (EDA) synthesis across the 26-year gold dataset: (a) empirical density and non-normal right-skewed profile of $\text{Close}$, (b) Q-Q plot highlighting heavy upper tails, (c) historical price trajectory exhibiting secular bull regimes, (d) cross-attribute Pearson correlation matrix exposing price multicollinearity, (e) bivariate identity alignment between $\text{Open}$ and $\text{Close}$, and (f) semi-logarithmic dispersion of daily $\text{Volume}$ against $\text{Close}$.}
 \label{fig:eda_synthesis}
 \end{figure*}
 
-
+\FloatBarrier
 % ==============================================================================
-% SUBSECTION: FEATURE TRANSFORMATION TECHNIQUES - FULL PORTFOLIO EDITION
+% SUBSECTION: FEATURE TRANSFORMATION TECHNIQUES
 % ==============================================================================
 
 \subsection{Feature Transformation Techniques}
@@ -530,7 +516,7 @@ Table~\ref{tab:eda_statistical_properties} compiles the summary diagnostics for 
 Feature transformation is an essential mathematical phase in machine learning pipelines, particularly when preparing heterogeneous financial tabular data for Artificial Neural Networks (ANNs), Multi-Layer Perceptrons (MLPs), and Recurrent/LSTM architectures. This section details the theoretical rationale, evaluates four scaling and transformation paradigms, and presents empirical before-and-after diagnostics.
 
 \subsubsection{Theoretical Rationale for Feature Transformation}
-Raw financial features span radically disparate physical domains and numerical scales: daily trading volume exceeds $\$386{,}000$ contracts, nominal asset prices range between $\$255$ and $\$5{,}400$, while physical attributes such as $\text{weight}$ remain concentrated below $100$. Feeding unscaled attributes into gradient-descent optimization induces severe pathologies:
+Raw financial features span radically disparate physical domains and numerical scales: daily trading volume exceeds $386{,}000$ contracts, nominal asset prices range between $\$255$ and $\$5{,}400$, while physical attributes such as $\text{weight}$ remain concentrated below $100$. Feeding unscaled attributes into gradient-descent optimization induces severe pathologies:
 \begin{enumerate}
     \item \textbf{Ill-Conditioned Hessian and Gradient Domination:} In feedforward neural layers parameterized by weight matrix $\mathbf{W}$ and bias $\mathbf{b}$, the gradient of the loss $\mathcal{L}$ with respect to weight $w_{ij}$ is directly proportional to the input magnitude:
     \begin{equation}
@@ -548,16 +534,16 @@ To stabilize variance and compress exponential scales into Gaussian-like bell cu
 \end{equation}
 Because data cleaning guaranteed $\text{Volume} \ge 1$ and all pricing series are strictly positive, the transformation is well-defined across all observations without singularity risk.
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.92\textwidth]{../outputs/transformations/01_log_transform_effects.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/transformations/01_log_transform_effects.png}
 \caption{Empirical density distributions before (red, left) and after (green, right) natural logarithmic transformation for $\text{Volume}$, $\text{weight}$, and the target $\text{Close}$.}
 \label{fig:log_transform_effects}
 \end{figure*}
 
 Fig.~\ref{fig:log_transform_effects} demonstrates the dramatic morphological normalization achieved via log transformation:
 \begin{itemize}
-    \item \textbf{\texttt{Volume}:} Raw volume exhibits severe Pareto-like elongation ($\gamma_1 = 7.6193$, $\gamma_2 = 66.7380$). Applying $\ln(\text{Volume})$ reduces skewness to $\gamma_1 = 0.4674$ (a \textbf{93.9\% reduction}) and suppresses kurtosis to $\gamma_2 = 0.7005$. The resulting density profile closely approximates a unimodal Gaussian.
+    \item \textbf{\texttt{Volume}:} Cleaned volume exhibits severe Pareto-like elongation ($\gamma_1 = 7.6193$, $\gamma_2 = 66.7380$). Applying $\ln(\text{Volume})$ reduces skewness to $\gamma_1 = 0.4674$ (a \textbf{93.9\% reduction}) and suppresses kurtosis to $\gamma_2 = 0.7005$. The resulting density profile closely approximates a unimodal Gaussian.
     \item \textbf{\texttt{weight}:} Raw $\text{weight}$ exhibits positive skewness ($\gamma_1 = 1.6690$, $\gamma_2 = 6.0396$). Following transformation, $\ln(\text{weight})$ attains near-perfect symmetry ($\gamma_1 = 0.0053$, a \textbf{99.7\% reduction}) with mesokurtic normality ($\gamma_2 = 0.0371$).
     \item \textbf{Target Variable (\texttt{Close}):} As shown in the bottom row, $\ln(\text{Close})$ compresses the multi-decade exponential gold rally into a compact, stationary continuum, shifting skewness from $\gamma_1 = 1.4181$ to a mild $\gamma_1 = -0.4969$.
     \item \textbf{A Critical Negative Example (\texttt{Sales}):} Significantly, the log transformation must \textbf{not} be applied universally. As detailed in Table~\ref{tab:transformation_metrics}, the cleaned $\text{Sales}$ attribute already possessed near-zero skewness ($\gamma_1 = 0.0333$). Applying a log transform artificially induced negative skewness ($\gamma_1 = -1.2633$), distorting an otherwise balanced uniform distribution. Hence, selective, mathematically grounded transformation is mandatory.
@@ -565,34 +551,37 @@ Fig.~\ref{fig:log_transform_effects} demonstrates the dramatic morphological nor
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{../outputs/transformations/03_skewness_kurtosis_shift.png}
+\includegraphics[width=0.95\linewidth]{../outputs/transformations/03_skewness_kurtosis_shift.png}
 \caption{Quantitative comparison of Skewness (left) and Kurtosis (right) across all seven features before (red) and after (green) logarithmic transformation.}
 \label{fig:skewness_kurtosis_shift}
 \end{figure}
 
 Fig.~\ref{fig:skewness_kurtosis_shift} visualizes the cross-feature shift in shape parameters. For all features exhibiting positive skewness ($\text{Open}$, $\text{High}$, $\text{Low}$, $\text{Volume}$, $\text{weight}$, $\text{Close}$), the log transform successfully contracts both skewness and kurtosis toward the zero-line benchmark.
 
-\begin{table*}[t]
+\begin{table*}[!t]
 \caption{Empirical Impact of Logarithmic Transformation on Statistical Moments ($N = 6{,}399$)}
 \label{tab:transformation_metrics}
 \centering
-\small
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{lrrrrrrrc}
 \toprule
 \textbf{Feature} & \textbf{Raw Min} & \textbf{Raw Max} & \textbf{Raw Skew} ($\gamma_{1}$) & \textbf{Log Skew} ($\gamma_{1,\text{log}}$) & $\boldsymbol{\Delta\text{Skew}}$ (\%) & \textbf{Raw Kurt} ($\gamma_{2}$) & \textbf{Log Kurt} ($\gamma_{2,\text{log}}$) & \textbf{Log Recommended?} \\
 \midrule
-\texttt{Open}   & 255.00   & 5,415.70   & 1.4191  & -0.4978  & +64.9\% & 3.8181   & -0.4942  & Yes (Linearizes rally) \\
-\texttt{High}   & 256.10   & 5,586.20   & 1.4335  & -0.4985  & +65.2\% & 3.9001   & -0.4887  & Yes (Linearizes rally) \\
-\texttt{Low}    & 255.00   & 5,334.90   & 1.4040  & -0.4960  & +64.7\% & 3.7161   & -0.4995  & Yes (Linearizes rally) \\
-\texttt{Volume} & 1.00     & 386,334.00 & 7.6193  & 0.4674   & \textbf{+93.9\%} & 66.7380  & 0.7005   & \textbf{Yes (Crucial for tails)} \\
-\texttt{Sales}  & 1,015.41 & 49,988.50  & 0.0333  & -1.2633  & -3,698.2\% & -1.1312 & 1.3106   & \textbf{No (Preserve linear)} \\
-\texttt{weight} & 11.66    & 364.23     & 1.6690  & 0.0053   & \textbf{+99.7\%} & 6.0396   & 0.0371   & \textbf{Yes (Near-perfect normal)} \\
+\texttt{Open}   & 255.00   & 5,415.70   & 1.4191  & -0.4978  & +64.9\%    & 3.8181   & -0.4942  & Yes (Linearizes rally) \\
+\texttt{High}   & 256.10   & 5,586.20   & 1.4335  & -0.4985  & +65.2\%    & 3.9001   & -0.4887  & Yes (Linearizes rally) \\
+\texttt{Low}    & 255.00   & 5,334.90   & 1.4040  & -0.4960  & +64.7\%    & 3.7161   & -0.4995  & Yes (Linearizes rally) \\
+\texttt{Volume} & 1.00     & 386,334.00 & 7.6193  & 0.4674   & \textbf{+93.9\%} & 66.7380 & 0.7005 & \textbf{Yes (Crucial for tails)} \\
+\texttt{Sales}  & 1,015.41 & 49,988.50  & 0.0333  & -1.2633  & -3,698.2\% & -1.1312  & 1.3106   & \textbf{No (Preserve linear)} \\
+\texttt{weight} & 11.66    & 364.23     & 1.6690  & 0.0053   & \textbf{+99.7\%} & 6.0396  & 0.0371 & \textbf{Yes (Near-perfect normal)} \\
 \textbf{\texttt{Close}} & \textbf{255.10} & \textbf{5,377.30} & \textbf{1.4181} & \textbf{-0.4969} & \textbf{+65.0\%} & \textbf{3.7962} & \textbf{-0.4942} & \textbf{Yes (Stabilizes loss variance)} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table*}
 
-\subsubsection{Feature Scaling: Z-Score Standardization vs. Min-Max Normalization}
+\subsubsection{Feature Scaling: Z-Score Standardization vs.\ Min-Max Normalization}
 While logarithmic transformation mitigates shape asymmetry, it does not unify the dynamic range across disparate attributes ($\ln(\text{Volume}) \in [0, 12.86]$ versus $\ln(\text{weight}) \in [2.45, 5.90]$). Two primary continuous scaling methodologies were comparatively analyzed:
 
 \begin{enumerate}
@@ -608,9 +597,9 @@ While logarithmic transformation mitigates shape asymmetry, it does not unify th
     Min-Max scaling forces all attributes into the closed interval $[0, 1]$. While beneficial for algorithms strictly requiring positive bounded inputs, Fig.~\ref{fig:scalers_comparability}(c) reveals a critical defect in financial domains: because extreme upper trading spikes remain in the dataset, the denominator $(x_{\max} - x_{\min})$ is dominated by rare tail events, compressing over $95\%$ of the empirical distribution into a narrow, uninformative band $[0.00, 0.12]$.
 \end{enumerate}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.94\textwidth]{../outputs/transformations/02_scalers_comparability.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/transformations/02_scalers_comparability.png}
 \caption{Cross-attribute scale comparability across all seven variables: (a) raw disparate scales, (b) Z-score standardization bringing all variables into a unified zero-centered variance scale, and (c) Min-Max scaling illustrating severe compression of bulk data due to upper outlier leverage.}
 \label{fig:scalers_comparability}
 \end{figure*}
@@ -620,23 +609,23 @@ As demonstrated in Fig.~\ref{fig:scalers_comparability}, Z-score standardization
 \subsubsection{Target Variable Transformation Analysis}
 A dedicated investigation was conducted regarding whether the predictive target variable $y = \text{Close}$ should be transformed.
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.95\textwidth]{../outputs/transformations/04_target_transformation_analysis.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/transformations/04_target_transformation_analysis.png}
 \caption{Comprehensive morphological analysis of the target variable \texttt{Close}: top row presents density histograms for Raw, Log-transformed ($\ln(\text{Close})$), and Standardized ($Z(\text{Close})$) representations; bottom row displays corresponding normal Q-Q plots.}
 \label{fig:target_transformation_analysis}
 \end{figure*}
 
 Fig.~\ref{fig:target_transformation_analysis} contrasts the distributional geometry and normal Q-Q plots across the three candidate target formulations:
 \begin{itemize}
-    \item In raw format (left column), the target exhibits heavy non-Gaussian convexity in the Q-Q plot and a severe upper tail. Neural network models optimizing MSE on raw dollars will assign quadratic error penalties to errors in 2024--2026 ($>\$5{,}000$) compared to 2000--2005 ($\approx \$300$), biasing predictions heavily toward the tail.
+    \item In raw format (left column), the target exhibits heavy non-Gaussian convexity in the Q-Q plot and a severe upper tail. Neural network models optimizing MSE on raw dollars assign quadratic error penalties to errors in 2024--2026 ($>\$5{,}000$) compared to 2000--2005 ($\approx \$300$), biasing predictions heavily toward the tail.
     \item Under logarithmic transformation (middle column), the Q-Q plot straightens substantially across the central bulk of quantiles, linearizing compounding percentage returns. Predicting $\ln(\text{Close})$ ensures percentage-error loss invariance.
     \item Under standardization (right column), the scale is centered to zero mean and unit variance, perfectly preserving relative geometric structure while preventing large prediction outputs from destabilizing output layer gradients.
 \end{itemize}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.92\textwidth]{../outputs/transformations/transformation_ieee_synthesis.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/transformations/transformation_ieee_synthesis.png}
 \caption{Feature transformation synthesis dashboard: (a) logarithmic compression of \texttt{Volume}, (b) unified scale comparability under StandardScaler, (c) Q-Q curvature of the raw target, and (d) linearized Q-Q trajectory of the log-transformed target.}
 \label{fig:transformation_synthesis}
 \end{figure*}
@@ -648,9 +637,9 @@ Based on rigorous empirical evaluation, the optimal transformation strategy for 
 \end{equation}
 This hybrid architecture selectively applies logarithmic compression to heavily skewed features ($\text{Volume}$ and $\text{weight}$), preserves linear uniformity in $\text{Sales}$, and unifies the entire feature manifold through Z-score standardization, providing optimal conditioning for neural network training.
 
-
+\FloatBarrier
 % ==============================================================================
-% SUBSECTION: FEATURE SELECTION METHODS - FULL PORTFOLIO EDITION
+% SUBSECTION: FEATURE SELECTION METHODS
 % ==============================================================================
 
 \subsection{Feature Selection Methods}
@@ -679,7 +668,7 @@ where $R_j^2$ is the coefficient of determination from regressing feature $x_j$ 
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{../outputs/selection/01_vif_multicollinearity_bars.png}
+\includegraphics[width=0.95\linewidth]{../outputs/selection/01_vif_multicollinearity_bars.png}
 \caption{Variance Inflation Factor (VIF) on a logarithmic scale across candidate input features. The horizontal dashed line marks the critical threshold ($\text{VIF} = 10$). Price features exhibit catastrophic collinearity exceeding $2{,}500$, while non-price features remain strictly orthogonal ($\text{VIF} \approx 1.0$).}
 \label{fig:vif_bars}
 \end{figure}
@@ -692,7 +681,7 @@ Fig.~\ref{fig:vif_bars} reveals an extreme divergence across feature classes:
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.88\columnwidth]{../outputs/selection/04_correlation_target_and_interfeature.png}
+\includegraphics[width=0.95\linewidth]{../outputs/selection/04_correlation_target_and_interfeature.png}
 \caption{Inter-feature and target Pearson correlation matrix, illustrating the acute block redundancy among price attributes and the absence of correlation for $\text{Sales}$ and $\text{weight}$.}
 \label{fig:interfeature_correlation}
 \end{figure}
@@ -708,23 +697,23 @@ To assess whether candidate features contain true predictive signal relative to 
     \end{equation}
     Estimated via $k$-nearest neighbors entropy estimators, MI values strictly satisfy $I(X; Y) \ge 0$, where $0$ denotes complete statistical independence.
     \item \textbf{Random Forest Ensemble Gini Importance:} Measures the mean decrease in impurity across 100 bagged decision trees, accounting for non-linear interactions.
-    \item \textbf{Lasso L1 Regularization:} Solves the penalized objective:
+    \item \textbf{Lasso $L_1$ Regularization:} Solves the penalized objective:
     \begin{equation}
         \min_{\mathbf{w}} \frac{1}{2N} \|\mathbf{y} - \mathbf{X}\mathbf{w}\|_2^2 + \lambda \|\mathbf{w}\|_1
     \end{equation}
-    Because the L1 norm ball possesses non-differentiable corners on coordinate axes, Lasso automatically drives strictly redundant and uninformative feature weights to zero.
+    Because the $L_1$ norm ball possesses non-differentiable corners on coordinate axes, Lasso automatically drives strictly redundant and uninformative feature weights to zero.
 \end{enumerate}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{../outputs/selection/02_mutual_information_ranking.png}
+\includegraphics[width=0.95\linewidth]{../outputs/selection/02_mutual_information_ranking.png}
 \caption{Ranking of candidate input features by Mutual Information with the target variable $\text{Close}$. Features below $0.1$ nats (red) carry negligible predictive information.}
 \label{fig:mi_ranking}
 \end{figure}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.92\textwidth]{../outputs/selection/03_feature_importance_comparison.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/selection/03_feature_importance_comparison.png}
 \caption{Model-based feature evaluation: (left) Random Forest relative Gini importance percentages, and (right) Lasso regularized coefficients with L1 sparsity penalty.}
 \label{fig:model_importances}
 \end{figure*}
@@ -732,33 +721,36 @@ To assess whether candidate features contain true predictive signal relative to 
 As illustrated in Fig.~\ref{fig:mi_ranking} and Fig.~\ref{fig:model_importances}:
 \begin{itemize}
     \item \textbf{High-Information Features:} $\text{High}$ ($I = 4.83$ nats), $\text{Low}$ ($I = 4.79$ nats), and $\text{Open}$ ($I = 4.24$ nats) dominate the information hierarchy, accompanied by significant Random Forest importance ($\text{Low} = 51.09\%$, $\text{High} = 44.99\%$).
-    \item \textbf{\texttt{Volume}:} Exhibits $I = 0.2120$ nats of non-linear mutual information and a Pearson correlation of $r = 0.2471$. While smaller in magnitude than raw price levels, it provides unique, orthogonal liquidity information ($\text{VIF} = 1.09$).
-    \item \textbf{Uninformative Features (\texttt{Sales} and \texttt{weight}):} The $\text{Sales}$ attribute yields exactly $I = 0.0000$ nats of Mutual Information, confirming that it shares zero statistical information with gold closing prices. Similarly, $\text{weight}$ yields $I = 0.0040$ nats. Under Lasso L1 regularization (Fig.~\ref{fig:model_importances}, right), the coefficients for both $\text{Sales}$ and $\text{weight}$ are shrunk strictly to \textbf{0.000000}.
+    \item \textbf{\texttt{Volume}:} Exhibits $I = 0.2120$ nats of non-linear mutual information and a Pearson correlation of $r = 0.2471$ (after logarithmic transformation). While smaller in magnitude than raw price levels, it provides unique, orthogonal liquidity information ($\text{VIF} = 1.09$).
+    \item \textbf{Uninformative Features (\texttt{Sales} and \texttt{weight}):} The $\text{Sales}$ attribute yields exactly $I = 0.0000$ nats of Mutual Information, confirming that it shares zero statistical information with gold closing prices. Similarly, $\text{weight}$ yields $I = 0.0040$ nats. Under Lasso $L_1$ regularization (Fig.~\ref{fig:model_importances}, right), the coefficients for both $\text{Sales}$ and $\text{weight}$ are shrunk strictly to \textbf{0.000000}.
 \end{itemize}
 
-\begin{table*}[t]
+\begin{table*}[!t]
 \caption{Comprehensive Feature Selection Metrics and Diagnostics ($N = 6{,}399$)}
 \label{tab:selection_summary}
 \centering
-\small
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{lrrrrrc}
 \toprule
-\textbf{Candidate Feature} & \textbf{Pearson} ($r$) & \textbf{Mutual Info} (nats) & \textbf{RF Importance} (\%) & \textbf{Lasso Coef} & \textbf{VIF (Raw)} & \textbf{Selection Verdict \& Justification} \\
+\textbf{Candidate Feature} & \textbf{Pearson} ($r$) & \textbf{Mutual Info} (nats) & \textbf{RF Imp.} (\%) & \textbf{Lasso Coef} & \textbf{VIF (Raw)} & \textbf{Selection Verdict \& Justification} \\
 \midrule
-\texttt{Open}   & 0.9998 & 4.2360 & 3.92\%  & 0.4290  & 7,188.79 & \textbf{Retained} (Temporal anchor; low VIF in isolation) \\
-\texttt{High}   & 0.9998 & 4.8271 & 44.99\% & 0.2787  & 5,504.06 & \textbf{Pruned / Envelope} (Redundant with Open/Low) \\
-\texttt{Low}    & 0.9999 & 4.7908 & 51.09\% & 0.2910  & 2,634.78 & \textbf{Pruned / Envelope} (Redundant with Open/High) \\
-\texttt{Volume} & 0.2471 & 0.2120 & 0.00\%  & 0.0000  & 1.09     & \textbf{Retained} (Orthogonal market liquidity signal) \\
-\texttt{Sales}  & -0.0073& 0.0000 & 0.00\%  & 0.0000  & 1.00     & \textbf{Eliminated} (Zero mutual info; pure noise) \\
-\texttt{weight} & -0.0080& 0.0040 & 0.00\%  & 0.0000  & 1.00     & \textbf{Eliminated} (Negligible info; Lasso zero) \\
+\texttt{Open}   & 0.9998 & 4.2360 & 3.92\%  & 0.4290 & 7,188.79 & \textbf{Retained} (Temporal anchor; low VIF in isolation) \\
+\texttt{High}   & 0.9998 & 4.8271 & 44.99\% & 0.2787 & 5,504.06 & \textbf{Pruned / Envelope} (Redundant with Open/Low) \\
+\texttt{Low}    & 0.9999 & 4.7908 & 51.09\% & 0.2910 & 2,634.78 & \textbf{Pruned / Envelope} (Redundant with Open/High) \\
+\texttt{Volume} & 0.2471 & 0.2120 & 0.00\%  & 0.0000 & 1.09     & \textbf{Retained} (Orthogonal market liquidity signal) \\
+\texttt{Sales}  & -0.0073& 0.0000 & 0.00\%  & 0.0000 & 1.00     & \textbf{Eliminated} (Zero mutual info; pure noise) \\
+\texttt{weight} & -0.0080& 0.0040 & 0.00\%  & 0.0000 & 1.00     & \textbf{Eliminated} (Negligible info; Lasso zero) \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table*}
 
 \subsubsection{Formal Elimination Criteria and Final Selected Subsets}
 Based on rigorous empirical criteria, two formal rules of elimination were enforced:
 \begin{enumerate}
-    \item \textbf{Noise Elimination Rule:} Any attribute satisfying $I(X; Y) < 0.05$ nats and receiving a zero coefficient under Lasso L1 regularized cross-validation is definitively pruned. Consequently, \textbf{\texttt{Sales}} and \textbf{\texttt{weight}} are permanently excluded from the predictive pipeline.
+    \item \textbf{Noise Elimination Rule:} Any attribute satisfying $I(X; Y) < 0.05$ nats and receiving a zero coefficient under Lasso $L_1$ regularized cross-validation is definitively pruned. Consequently, \textbf{\texttt{Sales}} and \textbf{\texttt{weight}} are permanently excluded from the predictive pipeline.
     \item \textbf{Multicollinearity Resolution Rule:} When multiple features exhibit mutual cross-correlation $r > 0.999$ and $\text{VIF} > 1{,}000$, keeping all elements inflates model variance without providing additional degrees of freedom. Two candidate feature subsets are formulated:
     \begin{itemize}
         \item \textbf{Subset 1 (Parsimonious Orthogonal Subset):} Consists of $\{ \text{Open}, \text{Volume} \}$. The $\text{Open}$ price represents the initial unobserved boundary of the daily session, carrying genuine temporal precedence. When evaluating VIF on this subset alone, multicollinearity collapses completely:
@@ -770,16 +762,16 @@ Based on rigorous empirical criteria, two formal rules of elimination were enfor
     \end{itemize}
 \end{enumerate}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.92\textwidth]{../outputs/selection/selection_ieee_synthesis.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/selection/selection_ieee_synthesis.png}
 \caption{Feature selection synthesis dashboard: (a) logarithmic VIF bars demonstrating price multicollinearity, (b) Mutual Information ranking isolating uninformative attributes, (c) Random Forest Gini importance distribution, and (d) Lasso L1 sparsity coefficients confirming the zero-weight assignment to $\text{Sales}$ and $\text{weight}$.}
 \label{fig:selection_synthesis}
 \end{figure*}
 
-
+\FloatBarrier
 % ==============================================================================
-% SUBSECTION: FEATURE ENGINEERING 
+% SUBSECTION: FEATURE ENGINEERING
 % ==============================================================================
 
 \subsection{Feature Engineering}
@@ -837,72 +829,75 @@ Eight domain-specific financial predictors spanning intraday price geometry, dir
 \subsubsection{Empirical Evaluation and Evidence of Information Gain}
 Table~\ref{tab:engineering_metrics} summarizes the statistical performance of all eight engineered predictors across linear correlation ($r$), Spearman rank correlation ($\rho$), and non-linear Mutual Information (MI) evaluated against both the nominal target ($\text{Close}$) and the stationary intraday return ($\frac{\text{Close} - \text{Open}}{\text{Open}}$).
 
-\begin{table*}[t]
+\begin{table*}[!t]
 \caption{Quantitative Information Gain of Synthesized Features Relative to Target \texttt{Close} and Intraday Returns}
 \label{tab:engineering_metrics}
 \centering
-\small
+\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{lrrrrrr}
 \toprule
 \textbf{Engineered Feature} & \textbf{Pearson} ($\text{Close}$) & \textbf{Spearman} ($\text{Close}$) & \textbf{MI} ($\text{Close}$, nats) & \textbf{Pearson} (Return) & \textbf{MI} (Return, nats) & \textbf{Skewness} \\
 \midrule
-\texttt{HL\_Midpoint}        & \textbf{0.9999} & \textbf{0.9999} & \textbf{4.8054} & 0.0094  & 0.1217  & 1.4181 \\
-\texttt{Intraday\_Spread}    & 0.5430          & 0.6094          & 0.3695          & -0.1421 & 0.5172  & 12.0992 \\
-\texttt{Relative\_Spread}    & 0.1661          & 0.1997          & 0.1353          & -0.1176 & \textbf{1.0651} & 2.6872 \\
+\texttt{HL\_Midpoint}        & \textbf{0.9999} & \textbf{0.9999} & \textbf{4.8054} & 0.0094  & 0.1217          & 1.4181  \\
+\texttt{Intraday\_Spread}    & 0.5430          & 0.6094          & 0.3695          & -0.1421 & 0.5172          & 12.0992 \\
+\texttt{Relative\_Spread}    & 0.1661          & 0.1997          & 0.1353          & -0.1176 & \textbf{1.0651} & 2.6872  \\
 \texttt{Open\_to\_Mid\_Pct}  & 0.0131          & 0.0263          & 0.1006          & \textbf{0.9213} & \textbf{1.3925} & -0.5278 \\
-\texttt{Open\_SMA\_7}        & 0.9993          & 0.9989          & 3.4313          & 0.0013  & 0.1041  & 1.3854 \\
-\texttt{Open\_SMA\_30}       & 0.9980          & 0.9958          & 3.0979          & 0.0038  & 0.1005  & 1.2757 \\
-\texttt{Open\_Volatility\_14}& 0.1023          & 0.0202          & \textbf{0.5923} & -0.0304 & 0.0286  & 2.5698 \\
-\texttt{Liquidity\_Impact}   & 0.5289          & 0.5664          & 0.3181          & -0.1093 & 0.4539  & 5.6787 \\
+\texttt{Open\_SMA\_7}        & 0.9993          & 0.9989          & 3.4313          & 0.0013  & 0.1041          & 1.3854  \\
+\texttt{Open\_SMA\_30}       & 0.9980          & 0.9958          & 3.0979          & 0.0038  & 0.1005          & 1.2757  \\
+\texttt{Open\_Volatility\_14}& 0.1023          & 0.0202          & \textbf{0.5923} & -0.0304 & 0.0286          & 2.5698  \\
+\texttt{Liquidity\_Impact}   & 0.5289          & 0.5664          & 0.3181          & -0.1093 & 0.4539          & 5.6787  \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table*}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{../outputs/engineering/01_hl_midpoint_vs_open_error.png}
+\includegraphics[width=0.95\linewidth]{../outputs/engineering/01_hl_midpoint_vs_open_error.png}
 \caption{Residual error density comparing the raw opening anchor ($\text{Close} - \text{Open}$) versus the engineered midpoint estimator ($\text{Close} - \text{HL\_Midpoint}$), illustrating a $47.3\%$ reduction in Mean Absolute Error.}
 \label{fig:hl_midpoint_error}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{../outputs/engineering/02_intraday_directional_bias.png}
+\includegraphics[width=0.95\linewidth]{../outputs/engineering/02_intraday_directional_bias.png}
 \caption{Linear alignment between the engineered directional bias (\texttt{Open\_to\_Mid\_Pct}) and real intraday percentage returns ($r = 0.9213$, $R^2 = 84.9\%$).}
 \label{fig:intraday_bias}
 \end{figure}
 
 \begin{enumerate}
     \item \textbf{Anchor Precision Gain (\texttt{HL\_Midpoint}):} Fig.~\ref{fig:hl_midpoint_error} confirms that replacing raw $\text{Open}$ with $\text{HL\_Midpoint}$ shrinks point estimation error drastically: Mean Absolute Error drops from $\$8.15$ to $\$4.30$ (a \textbf{47.3\% error reduction}), and Root Mean Squared Error drops from $\$17.32$ to $\$8.82$ (a \textbf{49.1\% RMSE reduction}), while achieving a Mutual Information of $4.8054$ nats with $\text{Close}$.
-    \item \textbf{Intraday Directional Discovery (\texttt{Open\_to\_Mid\_Pct}):} As demonstrated in Fig.~\ref{fig:intraday_bias}, \texttt{Open\_to\_Mid\_Pct} achieves a Pearson correlation of \textbf{$r = +0.9213$} ($R^2 = 84.9\%$) and Mutual Information of $1.3925$ nats with the actual intraday price change $\frac{\text{Close} - \text{Open}}{\text{Open}}$. While raw price levels fail to distinguish bullish versus bearish intra-day direction, this engineered ratio directly encodes directional market sentiment.
+    \item \textbf{Intraday Directional Discovery (\texttt{Open\_to\_Mid\_Pct}):} As demonstrated in Fig.~\ref{fig:intraday_bias}, \texttt{Open\_to\_Mid\_Pct} achieves a Pearson correlation of \textbf{$r = +0.9213$} ($R^2 = 84.9\%$) and Mutual Information of $1.3925$ nats with the actual intraday price change $\frac{\text{Close} - \text{Open}}{\text{Open}}$. While raw price levels fail to distinguish bullish versus bearish intraday direction, this engineered ratio directly encodes directional market sentiment.
     \item \textbf{Temporal Inertia and Volatility Extraction:} Fig.~\ref{fig:rolling_trend_vol} visualizes the recent 1,000 sessions of \texttt{Open\_SMA\_7}, \texttt{Open\_SMA\_30}, and \texttt{Open\_Volatility\_14}. The moving averages smoothly track macroeconomic momentum ($\text{MI} > 3.09$ nats) without utilizing target lags, while the 14-day rolling volatility successfully captures structural volatility bursts ($\text{MI} = 0.5923$ nats) in a stationary domain.
     \item \textbf{Contrast Against Discarded Raw Variables:} Fig.~\ref{fig:engineered_mi_contrast} directly benchmarks the Mutual Information of the newly synthesized predictors against the pruned original attributes. While raw $\text{Sales}$ ($0.0000$ nats) and $\text{weight}$ ($0.0040$ nats) yielded practically zero predictive utility, features such as \texttt{Open\_Volatility\_14} ($0.5923$ nats), \texttt{Intraday\_Spread} ($0.3695$ nats), and \texttt{Liquidity\_Impact} ($0.3181$ nats) extract substantial non-linear information.
 \end{enumerate}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.92\textwidth]{../outputs/engineering/03_rolling_trend_and_volatility.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/engineering/03_rolling_trend_and_volatility.png}
 \caption{Temporal evaluation of causal rolling predictors over the most recent 1,000 trading sessions: (a) \texttt{Close} tracked by \texttt{Open\_SMA\_7} and \texttt{Open\_SMA\_30}, and (b) stationary volatility clustering captured by \texttt{Open\_Volatility\_14}.}
 \label{fig:rolling_trend_vol}
 \end{figure*}
 
-\begin{figure}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=\columnwidth]{../outputs/engineering/04_engineered_mi_vs_discarded.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/engineering/04_engineered_mi_vs_discarded.png}
 \caption{Mutual Information comparison benchmarking engineered features (green) against discarded non-price original features (red).}
 \label{fig:engineered_mi_contrast}
 \end{figure*}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{../outputs/engineering/05_engineered_correlation_heatmap.png}
+\includegraphics[width=0.95\linewidth]{../outputs/engineering/05_engineered_correlation_heatmap.png}
 \caption{Cross-correlation matrix across all eight engineered predictors and the target $\text{Close}$.}
 \label{fig:engineered_heatmap}
 \end{figure}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.92\textwidth]{../outputs/engineering/engineering_ieee_synthesis.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/engineering/engineering_ieee_synthesis.png}
 \caption{Feature engineering synthesis dashboard: (a) estimation residual compression via \texttt{HL\_Midpoint}, (b) intraday return correlation via \texttt{Open\_to\_Mid\_Pct}, (c) Mutual Information hierarchy across synthesized features, and (d) rolling volatility regime detection.}
 \label{fig:engineering_synthesis}
 \end{figure*}
@@ -910,9 +905,9 @@ Table~\ref{tab:engineering_metrics} summarizes the statistical performance of al
 \subsubsection{Conclusion on Feature Engineering Value}
 Fig.~\ref{fig:engineered_heatmap} and Fig.~\ref{fig:engineering_synthesis} confirm that the synthesized features provide significant, non-redundant predictive value. Specifically, \texttt{Open\_to\_Mid\_Pct}, \texttt{Relative\_Spread}, \texttt{Open\_Volatility\_14}, and \texttt{Liquidity\_Impact} introduce orthogonal stationary dimensions ($\text{MI} \in [0.10, 1.39]$ nats on prices and returns) that raw OHLC bars cannot express independently. Combined with \texttt{HL\_Midpoint} and \texttt{Open\_SMA\_7/30}, these features transform the input space into an enriched representation tailored for deep neural forecasting.
 
-
+\FloatBarrier
 % ==============================================================================
-% SECTION: COMPARATIVE ANALYSIS AND RESULTS - FULL PORTFOLIO EDITION
+% SECTION: COMPARATIVE ANALYSIS AND RESULTS
 % ==============================================================================
 
 \section{Results and Comparative Analysis}
@@ -943,51 +938,54 @@ To quantitatively evaluate feature usefulness for predicting $\text{Close}$ with
     \end{equation}
 \end{itemize}
 
-Each feature set was evaluated across both \textbf{intrinsic numerical conditioning} (matrix condition number $\kappa(\mathbf{X})$, maximum VIF, mean absolute skewness) and \textbf{out-of-sample predictive probe performance} using a Linear Ridge probe ($\alpha = 1.0$) and a Multi-Layer Perceptron Neural Network probe ($\text{MLP}(64, 32)$ optimized with Adam, $\eta = 0.01$). Note that all scalers were fitted strictly on the 80\% training window and applied out-of-sample to guarantee zero look-ahead bias.
+Each feature set was evaluated across both \textbf{intrinsic numerical conditioning} (matrix condition number $\kappa(\mathbf{X})$, maximum VIF, mean absolute skewness) and \textbf{out-of-sample predictive probe performance} using a Linear Ridge probe ($\alpha = 1.0$) and a Multi-Layer Perceptron Neural Network probe ($\text{MLP}(64, 32)$ optimized with Adam, $\eta = 0.01$). Note that all scalers were fitted strictly on the $80\%$ training window and applied out-of-sample to guarantee zero look-ahead bias.
 
-\begin{table*}[t]
+\begin{table*}[!t]
 \caption{Multi-Criteria Benchmark Comparing Feature Sets on Chronological 80/20 Split (Test Period: 2021--2026)}
 \label{tab:comparative_benchmark}
 \centering
-\small
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{lcrrrrrrrrr}
 \toprule
 \textbf{Feature Set} & \textbf{Dim} ($D$) & \textbf{Mean} $|\gamma_1|$ & $\text{VIF}_{\max}$ & $\boldsymbol{\kappa(\mathbf{X})}$ & \textbf{Ridge MAE} & \textbf{MLP MAE} & \textbf{MLP RMSE} & \textbf{MLP} $R^2$ & \textbf{Iters} & \textbf{Final Loss} \\
 \midrule
 1. Original (Raw Unscaled)     & 6 & 2.263 & 5,876.56 & 5,902.30 & \$6.03  & \$37.48 & \$114.54 & 0.97991 & 42  & 1,669.98 \\
-2. Transformed (Log + Z-Score) & 6 & \textbf{0.823} & 5,870.93 & 166.53   & \$8.47  & \$7.59  & \textbf{\$13.66}  & \textbf{0.99971} & 194 & 12.95    \\
-3. Selected Orthogonal         & \textbf{2} & 1.018 & \textbf{1.03}     & \textbf{1.20}     & \$16.46 & \$17.08 & \$32.51  & 0.99838 & 95  & 58.80    \\
+2. Transformed (Log + Z-Score) & 6 & \textbf{0.823} & 5,870.93 & 166.53 & \$8.47 & \$7.59 & \textbf{\$13.66} & \textbf{0.99971} & 194 & 12.95 \\
+3. Selected Orthogonal         & \textbf{2} & 1.018 & \textbf{1.03} & \textbf{1.20} & \$16.46 & \$17.08 & \$32.51 & 0.99838 & 95 & 58.80 \\
 \textbf{4. Final Engineered \& Selected} & 5 & 0.866 & \textbf{1.30} & \textbf{1.71} & \$7.21 & \textbf{\$7.37} & \$14.62 & 0.99967 & \textbf{105} & \textbf{9.77} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table*}
 
 \subsection{Empirical Benchmark Findings}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.95\textwidth]{../outputs/comparative/01_conditioning_and_skew_comparison.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/comparative/01_conditioning_and_skew_comparison.png}
 \caption{Numerical conditioning and distributional comparison across the four feature sets: (a) matrix condition number $\kappa(\mathbf{X})$, (b) maximum Variance Inflation Factor ($\text{VIF}_{\max}$), and (c) mean absolute skewness.}
 \label{fig:comp_conditioning}
 \end{figure*}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.94\textwidth]{../outputs/comparative/02_mlp_convergence_and_error.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/comparative/02_mlp_convergence_and_error.png}
 \caption{Neural network diagnostic evaluation: (a) MLP training MSE loss convergence curves on a logarithmic scale, and (b) out-of-sample MAE and RMSE across the 2021--2026 test regime.}
 \label{fig:comp_mlp}
 \end{figure*}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{../outputs/comparative/03_pca_variance_comparison.png}
+\includegraphics[width=0.95\linewidth]{../outputs/comparative/03_pca_variance_comparison.png}
 \caption{Principal Component Analysis (PCA) cumulative explained variance ratio across feature sets, demonstrating representation efficiency.}
 \label{fig:comp_pca}
 \end{figure}
 
-\begin{figure*}[htbp]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.94\textwidth]{../outputs/comparative/comparative_ieee_synthesis.png}
+\includegraphics[width=0.92\textwidth,height=0.35\textheight,keepaspectratio]{../outputs/comparative/comparative_ieee_synthesis.png}
 \caption{Global comparative synthesis: (a) matrix conditioning reduction, (b) neural optimization convergence curves, (c) chronological test error reduction, and (d) actual vs.\ predicted extrapolation trajectories across the 2024--2026 secular gold rally.}
 \label{fig:comp_synthesis}
 \end{figure*}
@@ -995,12 +993,16 @@ Each feature set was evaluated across both \textbf{intrinsic numerical condition
 Table~\ref{tab:comparative_benchmark} and Figs.~\ref{fig:comp_conditioning}--\ref{fig:comp_synthesis} establish four decisive empirical findings:
 
 \begin{enumerate}
-    \item \textbf{Catastrophic Failure of Unscaled Raw Data in Neural Models:} While linear Ridge regression achieves $\$6.03$ MAE on Set 1 via analytical matrix inversion, the gradient-based MLP probe suffers severe degradation ($\text{MAE} = \$37.48$, $\text{RMSE} = \$114.54$, $R^2 = 0.97991$). Its training stalls prematurely at 42 iterations with a massive MSE loss of $1{,}669.98$. As illustrated in Fig.~\ref{fig:comp_synthesis}(d), the unscaled MLP fails completely to extrapolate into the $\$5{,}000+$ price regime due to extreme Hessian ill-conditioning ($\kappa = 5{,}902.30$) and unscaled $\text{Volume}$ gradient domination.
+    \item \textbf{Catastrophic Failure of Unscaled Raw Data in Neural Models:} While linear Ridge regression achieves $\$6.03$ MAE on Set 1 via analytical matrix inversion, the gradient-based MLP probe suffers severe degradation ($\text{MAE} = \$37.48$, $\text{RMSE} = \$114.54$, $R^2 = 0.97991$). Its training stalls prematurely at $42$ iterations with a massive MSE loss of $1{,}669.98$. As illustrated in Fig.~\ref{fig:comp_synthesis}(d), the unscaled MLP fails completely to extrapolate into the $\$5{,}000+$ price regime due to extreme Hessian ill-conditioning ($\kappa = 5{,}902.30$) and unscaled $\text{Volume}$ gradient domination.
     \item \textbf{Transformative Impact of Scaling and Log Compression:} Moving from Set 1 to Set 2 lowers matrix conditioning by $97.2\%$ ($\kappa: 5{,}902.30 \to 166.53$) and reduces mean absolute skewness by $63.6\%$ ($2.263 \to 0.823$). Consequently, the MLP test MAE drops by \textbf{79.7\%} ($\$37.48 \to \$7.59$) and RMSE drops by \textbf{88.1\%} ($\$114.54 \to \$13.66$). However, Set 2 retains severe collinearity ($\text{VIF}_{\max} = 5{,}870.93$) and requires $194$ epochs to converge.
-    \item \textbf{Trade-off of Aggressive Orthogonal Pruning (Set 3):} Restricting inputs solely to $\{\text{Open}, \ln(\text{Volume})\}$ achieves near-perfect numerical conditioning ($\kappa = 1.20$, $\text{VIF}_{\max} = 1.03$). However, discarding intraday high-low price dynamics raises MLP MAE to $\$17.08$, confirming that session envelope information is essential for accurate close estimation.
+    \item \textbf{Trade-off of Aggressive Orthogonal Pruning (Set 3):} Restricting inputs solely to $\{\text{Open}, \ln(1 + \text{Volume})\}$ achieves near-perfect numerical conditioning ($\kappa = 1.20$, $\text{VIF}_{\max} = 1.03$). However, discarding intraday high-low price dynamics raises MLP MAE to $\$17.08$, confirming that session envelope information is essential for accurate close estimation.
     \item \textbf{Superiority of the Final Engineered \& Selected Set (Set 4):} Set 4 unifies the advantages of every pipeline stage. With only $D = 5$ features, it attains near-ideal orthogonality ($\text{VIF}_{\max} = 1.30$, $\kappa = 1.71$---a $3{,}450\times$ improvement over raw inputs) while achieving the \textbf{lowest out-of-sample MLP MAE ($\$7.37$, an 80.3\% error reduction over Set 1)}, the \textbf{lowest training MSE loss ($9.77$)}, and \textbf{rapid convergence in just $105$ epochs} ($45.9\%$ fewer iterations than Set 2). Furthermore, PCA cumulative variance analysis (Fig.~\ref{fig:comp_pca}) reveals that Set 4 distributes variance evenly across its orthogonal principal axes rather than collapsing onto a single collinear vector.
 \end{enumerate}
 
+\FloatBarrier
+% ==============================================================================
+% SECTION: DISCUSSION
+% ==============================================================================
 
 \section{Discussion}
 \label{sec:discussion}
@@ -1008,15 +1010,15 @@ Table~\ref{tab:comparative_benchmark} and Figs.~\ref{fig:comp_conditioning}--\re
 \subsection{Which Preprocessing and Engineering Steps Delivered the Greatest Utility?}
 Empirical benchmarking across all seven stages demonstrates that no single step operates in isolation; however, three transformations exerted disproportionate positive impact on downstream neural modeling:
 \begin{enumerate}
-    \item \textbf{Selective Logarithmic Compression + Z-Score Standardization:} Transforming raw \texttt{Volume} ($\gamma_1 = 7.62 \to 0.47$) and scaling all features to unit variance reduced matrix ill-conditioning by 7.2\%$ ($\kappa: 5{,}902 \to 166$) and eliminated gradient domination. This step alone cut MLP prediction MAE by 9.7\%$ ($$37.48 \to $7.59$). Equally important was the negative diagnostic on \texttt{Sales}, proving that uniform-like features must bypass logarithmic mapping to prevent artificial skew distortion.
-    \item \textbf{OHLC Envelope Fusion into \texttt{HL\_Midpoint} and \texttt{Open\_to\_Mid\_Pct}:} Standard feature selection revealed that supplying raw \texttt{Open}, \texttt{High}, and \texttt{Low} simultaneously produces catastrophic collinearity ($\text{VIF} > 7{,}100$). Instead of blindly pruning intraday information (which degraded Set 3 MAE to $$17.08$), condensing $\{\text{High}, \text{Low}\}$ into their midpoint and expressing opening deviation as a dimensionless percentage preserved complete intraday predictive power while slashing $\text{VIF}_{\max}$ to .30$.
-    \item \textbf{Pruning Stochastic Noise (\texttt{Sales} and \texttt{weight}):} Mutual Information (bash.000$ and bash.004$ nats) and Lasso $ sparsity decisively identified non-informative noise. Removing these attributes reduced input dimensionality from =6$ to =5$, allowing neural optimization to converge in 05$ epochs compared to 94$ epochs (5.9\%$ faster).
+    \item \textbf{Selective Logarithmic Compression + Z-Score Standardization:} Transforming raw \texttt{Volume} ($\gamma_1 = 7.62 \to 0.47$) and scaling all features to unit variance reduced matrix ill-conditioning by $97.2\%$ ($\kappa: 5{,}902 \to 166$) and eliminated gradient domination. This step alone cut MLP prediction MAE by $79.7\%$ ($\$37.48 \to \$7.59$). Equally important was the negative diagnostic on \texttt{Sales}, proving that uniform-like features must bypass logarithmic mapping to prevent artificial skew distortion.
+    \item \textbf{OHLC Envelope Fusion into \texttt{HL\_Midpoint} and \texttt{Open\_to\_Mid\_Pct}:} Standard feature selection revealed that supplying raw \texttt{Open}, \texttt{High}, and \texttt{Low} simultaneously produces catastrophic collinearity ($\text{VIF} > 7{,}100$). Instead of blindly pruning intraday information (which degraded Set 3 MAE to $\$17.08$), condensing $\{\text{High}, \text{Low}\}$ into their midpoint and expressing opening deviation as a dimensionless percentage preserved complete intraday predictive power while slashing $\text{VIF}_{\max}$ to $1.30$.
+    \item \textbf{Pruning Stochastic Noise (\texttt{Sales} and \texttt{weight}):} Mutual Information ($0.000$ and $0.004$ nats) and Lasso $L_1$ sparsity decisively identified non-informative noise. Removing these attributes reduced input dimensionality from $D = 6$ to $D = 5$, allowing neural optimization to converge in $105$ epochs compared to $194$ epochs ($45.9\%$ faster).
 \end{enumerate}
 
 \subsection{Methodological Challenges Encountered}
 \begin{itemize}
-    \item \textbf{Secular Non-Stationarity vs.\ Outlier Clipping:} Gold appreciated over 0\times$ between 2000 ($$255$) and 2026 ($$5{,}377$). Naive application of Tukey IQR outlier clipping would have truncated genuine market growth above $$3{,}261$, ruining the test window. Furthermore, standard tree ensembles (e.g., Random Forest) fail to extrapolate above historical training ceilings ($>$2{,}060$ in the 2000--2021 training split), necessitating neural or linear regression architectures capable of continuous trend extrapolation.
-    \item \textbf{Data Integrity Without Attrition:} Reconciling 31$ OHLC boundary errors and 37$ missing \texttt{Sales} entries without discarding trading days was vital to maintain chronological continuity for moving averages and rolling volatility estimation.
+    \item \textbf{Secular Non-Stationarity vs.\ Outlier Clipping:} Gold appreciated over $20\times$ between 2000 ($\$255$) and 2026 ($\$5{,}377$). Naive application of Tukey IQR outlier clipping would have truncated genuine market growth above $\$3{,}261$, ruining the test window. Furthermore, standard tree ensembles (e.g., Random Forest) fail to extrapolate above historical training ceilings ($>\$2{,}060$ in the 2000--2021 training split), necessitating neural or linear regression architectures capable of continuous trend extrapolation.
+    \item \textbf{Data Integrity Without Attrition:} Reconciling $431$ OHLC boundary errors and $937$ missing \texttt{Sales} entries without discarding trading days was vital to maintain chronological continuity for moving averages and rolling volatility estimation.
     \item \textbf{Zero-Leakage Discipline:} Computing rolling metrics exclusively on lagged \texttt{Open} quotations prevented accidental forward-looking contamination from \texttt{Close}, ensuring valid out-of-sample generalization.
 \end{itemize}
 
@@ -1030,16 +1032,17 @@ Future iterations extending this pipeline into full production trading or macroe
 \section{Conclusion}
 \label{sec:conclusion}
 
-This work demonstrated a disciplined, end-to-end Python pipeline transforming raw, heterogeneous financial records (\texttt{Gold\_data.csv}, =6{,}399$) into an optimized five-dimensional neural feature space. Through rigorous data cleaning, 26-plot exploratory analysis, selective logarithmic transformation, VIF/MI/Lasso selection, and causal financial feature engineering, the input representation achieved near-ideal numerical orthogonality ($\kappa = 1.71$, $\text{VIF}_{\max} = 1.30$) with zero data attrition.
+This work demonstrated a disciplined, end-to-end Python pipeline transforming raw, heterogeneous financial records (\texttt{Gold\_data.csv}, $N = 6{,}399$) into an optimized five-dimensional neural feature space. Through rigorous data cleaning, 26-plot exploratory analysis, selective logarithmic transformation, VIF/MI/Lasso selection, and causal financial feature engineering, the input representation achieved near-ideal numerical orthogonality ($\kappa = 1.71$, $\text{VIF}_{\max} = 1.30$) with zero data attrition.
 
-Crucially, chronological 80/20 out-of-sample benchmarking validated that curated feature engineering directly translates into superior neural network performance: the final engineered feature set achieved an 0.3\%$ reduction in MLP Mean Absolute Error ($$37.48 \to $7.37$), an 7.2\%$ reduction in Root Mean Squared Error ($$114.54 \to $14.62$), and a 9.4\%$ drop in final training MSE loss ({,}669.98 \to 9.77$) with nearly twice the convergence speed. Consequently, the curated representation $\{ \text{HL\_Midpoint}, \text{Open\_to\_Mid\_Pct}, \ln(\text{Relative\_Spread}), \ln(\text{Open\_Volatility\_14}), \ln(\text{Volume}) \}$ provides a mathematically sound foundation for training deep Multi-Layer Perceptrons, 1D-CNNs, and LSTM forecasting architectures.
+Crucially, chronological 80/20 out-of-sample benchmarking validated that curated feature engineering directly translates into superior neural network performance: the final engineered feature set achieved an $80.3\%$ reduction in MLP Mean Absolute Error ($\$37.48 \to \$7.37$), an $87.2\%$ reduction in Root Mean Squared Error ($\$114.54 \to \$14.62$), and a $99.4\%$ drop in final training MSE loss ($1{,}669.98 \to 9.77$) with nearly twice the convergence speed. Consequently, the curated representation $\{ \text{HL\_Midpoint}, \text{Open\_to\_Mid\_Pct}, \ln(\text{Relative\_Spread}), \ln(\text{Open\_Volatility\_14}), \ln(\text{Volume}) \}$ provides a mathematically sound foundation for training deep Multi-Layer Perceptrons, 1D-CNNs, and LSTM forecasting architectures.
 
+\FloatBarrier
 \begin{thebibliography}{00}
 \bibitem{b1} I. Goodfellow, Y. Bengio, and A. Courville, \textit{Deep Learning}. Cambridge, MA, USA: MIT Press, 2016.
-\bibitem{b2} I. Guyon and A. Elisseeff, An introduction to variable and feature selection,'' \textit{Journal of Machine Learning Research}, vol. 3, pp. 1157--1182, Mar. 2003.
-\bibitem{b3} R. Cont, Empirical properties of asset returns: stylized facts and statistical issues,'' \textit{Quantitative Finance}, vol. 1, no. 2, pp. 223--236, Feb. 2001.
-\bibitem{b4} Y. Amihud, Illiquidity and stock returns: cross-section and time-series effects,'' \textit{Journal of Financial Markets}, vol. 5, no. 1, pp. 31--56, Jan. 2002.
-\bibitem{b5} F. Pedregosa et al., Scikit-learn: Machine learning in Python,'' \textit{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, Oct. 2011.
+\bibitem{b2} I. Guyon and A. Elisseeff, ``An introduction to variable and feature selection,'' \textit{Journal of Machine Learning Research}, vol. 3, pp. 1157--1182, Mar. 2003.
+\bibitem{b3} R. Cont, ``Empirical properties of asset returns: stylized facts and statistical issues,'' \textit{Quantitative Finance}, vol. 1, no. 2, pp. 223--236, Feb. 2001.
+\bibitem{b4} Y. Amihud, ``Illiquidity and stock returns: cross-section and time-series effects,'' \textit{Journal of Financial Markets}, vol. 5, no. 1, pp. 31--56, Jan. 2002.
+\bibitem{b5} F. Pedregosa et al., ``Scikit-learn: Machine learning in Python,'' \textit{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, Oct. 2011.
 \end{thebibliography}
 
 \end{document}
