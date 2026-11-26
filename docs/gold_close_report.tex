@@ -18,17 +18,40 @@
 
 \begin{document}
 
-\title{}
+\title{Feature Analysis, Selection, and Engineering for Neural Forecasting of Gold Closing Prices}
+
+\author{\IEEEauthorblockN{Guilherme}
+\IEEEauthorblockA{\textit{Portfolio Research Project -- Feature Engineering \& Neural Modeling}\\
+Based on Artificial Neural Networks Curriculum (Universidade da Madeira)\\
+Funchal, Portugal}
+}
 
 \maketitle
 
 \begin{abstract}
-
+Financial time-series forecasting with Artificial Neural Networks (ANNs) relies heavily on data conditioning, numerical stability, and domain-informed feature representation. This study presents an exhaustive seven-stage feature analysis and engineering pipeline over a 26-year historical gold asset dataset (\texttt{Gold\_data.csv}, $N = 6{,}399$ daily sessions from 2000 to 2026), targeting the daily closing price (\texttt{Close}). Key data pathologies---including $937$ missing \texttt{Sales} records, $418$ zero-volume days, and $431$ Open-High-Low-Close (OHLC) logical boundary inconsistencies---were resolved without observation loss. Extensive Exploratory Data Analysis (EDA) across 26 visualizations diagnosed severe right-skewness in \texttt{Volume} ($\gamma_1 = 7.62$), non-Gaussian leptokurtic tails in \texttt{Close}, and acute multicollinearity across price inputs ($r > 0.9997$, Variance Inflation Factor $\text{VIF} > 7{,}100$). Selective natural logarithmic transformation reduced \texttt{Volume} and \texttt{weight} skewness by $93.9\%$ and $99.7\%$, respectively, while Mutual Information and Lasso $L_1$ regularization eliminated uninformative attributes (\texttt{Sales} and \texttt{weight}). Subsequently, eight strictly causal financial predictors were engineered, demonstrating a $47.3\%$ estimation MAE reduction via \texttt{HL\_Midpoint} and $+0.9213$ correlation with intraday returns via \texttt{Open\_to\_Mid\_Pct}. On a strict chronological 80/20 test split (2021--2026), the final five-feature engineered set reduced matrix ill-conditioning from $\kappa = 5{,}902.30$ to $1.71$ ($\text{VIF}_{\max} = 1.30$) and lowered Multi-Layer Perceptron (MLP) out-of-sample MAE by $80.3\%$ (from $\$37.48$ to $\$7.37$) and RMSE by $87.2\%$ (from $\$114.54$ to $\$14.62$).
 \end{abstract}
 
+\begin{IEEEkeywords}
+Feature Engineering, Feature Selection, Exploratory Data Analysis, Multicollinearity, Artificial Neural Networks, Gold Price Forecasting.
+\end{IEEEkeywords}
+
 \section{Introduction}
+Gold serves globally as a premier macroeconomic hedge against currency debasement, geopolitical uncertainty, and inflationary regimes. Modeling daily gold closing prices (\texttt{Close}) presents formidable mathematical challenges for Artificial Neural Networks (ANNs). Unlike stationary physical signals, raw financial tabular records exhibit pronounced heteroscedasticity, volatility clustering, disparate scales spanning five orders of magnitude, and extreme inter-feature multicollinearity among Open-High-Low-Close (OHLC) price quotations. Supplying raw, uncurated inputs directly to gradient-based neural optimizers frequently induces ill-conditioned loss landscapes, vanishing or exploding gradients, and poor out-of-sample extrapolation.
+
+Rather than treating neural networks as uncalibrated black boxes, this work implements a rigorous, modular seven-stage Python pipeline dedicated exclusively to data diagnosis, preprocessing, transformation, selection, and domain-specific feature synthesis on \texttt{Gold\_data.csv} ($N = 6{,}399$ trading days spanning August 2000 through March 2026). The primary contributions of this investigation are:
+\begin{itemize}
+    \item \textbf{Zero-Attrition Data Hygiene:} Systematic reconciliation of OHLC physical bounds and time-series interpolation of missing \texttt{Sales} and zero-volume sessions while preserving secular macroeconomic trends.
+    \item \textbf{Exhaustive Distributional \& Structural Profiling:} A 26-plot Exploratory Data Analysis uncovering non-Gaussianity, volatility regimes, and extreme linear redundancy across price variables.
+    \item \textbf{Mathematically Grounded Conditioning:} Quantitative comparison of logarithmic compression, Z-score standardization, and Min-Max normalization, highlighting counter-examples where naive transformations induce distortion.
+    \item \textbf{Multi-Criteria Feature Selection:} Prudent elimination of uninformative stochastic noise and rank-deficient redundancies via Variance Inflation Factor (VIF), Mutual Information, Random Forest Gini importance, and Lasso $L_1$ sparsity penalties.
+    \item \textbf{Causal Financial Feature Engineering \& Validation:} Synthesis of eight zero-leakage domain features validated via chronological 80/20 neural network probe benchmarks.
+\end{itemize}
+
+The remainder of this report is organized as follows: Section~\ref{sec:methodology} details the technical methodology across Stages 1--6; Section~\ref{sec:results_comparative} presents the comparative multi-criteria benchmark of Stage 7; Section~\ref{sec:discussion} reflects on technical trade-offs, limitations, and insights; and Section~\ref{sec:conclusion} concludes with deployment recommendations for deep learning architectures.
 
 \section{Methodology}
+\label{sec:methodology}
 
 \subsection{Data Import and Exploration}
 \label{sec:data_import_exploration}
@@ -762,7 +785,7 @@ Based on rigorous empirical criteria, two formal rules of elimination were enfor
 \subsection{Feature Engineering}
 \label{sec:feature_engineering}
 
-While feature selection pruned irrelevant and collinear raw attributes ($\text{Sales}$ and $\text{weight}$), feature engineering aims to synthesize domain-informed predictors from the surviving physical attributes ($\text{Open}$, $\text{High}$, $\text{Low}$, $\text{Volume}$) to enrich the representational space of the data. Crucially, all engineered features were computed on the physical cleaned domain prior to final Z-score standardization to preserve mathematical interpretability, and every rolling temporal feature was restricted exclusively to causal operations on input variables—strictly prohibiting any target leakage from $\text{Close}$.
+While feature selection pruned irrelevant and collinear raw attributes ($\text{Sales}$ and $\text{weight}$), feature engineering aims to synthesize domain-informed predictors from the surviving physical attributes ($\text{Open}$, $\text{High}$, $\text{Low}$, $\text{Volume}$) to enrich the representational space of the data. Crucially, all engineered features were computed on the physical cleaned domain prior to final Z-score standardization to preserve mathematical interpretability, and every rolling temporal feature was restricted exclusively to causal operations on input variables---strictly prohibiting any target leakage from $\text{Close}$.
 
 \subsubsection{Synthesized Financial Features and Mathematical Formulations}
 Eight domain-specific financial predictors spanning intraday price geometry, directional bias, trend inertia, volatility regimes, and market depth were formulated:
@@ -888,15 +911,135 @@ Table~\ref{tab:engineering_metrics} summarizes the statistical performance of al
 Fig.~\ref{fig:engineered_heatmap} and Fig.~\ref{fig:engineering_synthesis} confirm that the synthesized features provide significant, non-redundant predictive value. Specifically, \texttt{Open\_to\_Mid\_Pct}, \texttt{Relative\_Spread}, \texttt{Open\_Volatility\_14}, and \texttt{Liquidity\_Impact} introduce orthogonal stationary dimensions ($\text{MI} \in [0.10, 1.39]$ nats on prices and returns) that raw OHLC bars cannot express independently. Combined with \texttt{HL\_Midpoint} and \texttt{Open\_SMA\_7/30}, these features transform the input space into an enriched representation tailored for deep neural forecasting.
 
 
-\section{Results}
+% ==============================================================================
+% SECTION: COMPARATIVE ANALYSIS AND RESULTS - FULL PORTFOLIO EDITION
+% ==============================================================================
+
+\section{Results and Comparative Analysis}
+\label{sec:results_comparative}
+
+This section synthesizes the empirical outcomes across all preprocessing stages and presents a rigorous multi-criteria benchmark comparing the four progressively refined feature sets.
+
+\subsection{Stage-by-Stage Empirical Pipeline Summary}
+Across the end-to-end execution on $N = 6{,}399$ daily gold sessions (2000--2026), each methodology stage directly resolved a documented mathematical or physical bottleneck:
+\begin{enumerate}
+    \item \textbf{Data Cleaning:} Reconciled $431$ OHLC price boundary violations ($1$ $\text{High} < \text{Low}$ and $430$ $\text{Close} \notin [\text{Low}, \text{High}]$), imputed $937$ missing $\text{Sales}$ entries ($14.64\%$), and rectified $418$ zero-volume sessions ($6.53\%$) with zero row attrition ($100\%$ retention).
+    \item \textbf{Exploratory Data Analysis (EDA):} Diagnosed acute non-Gaussianity in $\text{Close}$ ($\gamma_1 = 1.418$, $\gamma_2 = 3.796$), extreme tail elongation in $\text{Volume}$ ($\gamma_1 = 7.62$), severe price collinearity ($r \ge 0.9998$), and Mandelbrotian volatility clustering across historical financial crises.
+    \item \textbf{Feature Transformation:} Reduced $\text{Volume}$ skewness by $93.9\%$ ($7.62 \to 0.47$) and $\text{weight}$ skewness by $99.7\%$ ($1.67 \to 0.005$) via natural logarithm compression, while demonstrating why uniform $\text{Sales}$ must retain linear scale. Z-score standardization aligned all disparate ranges to $\mu = 0, \sigma = 1$.
+    \item \textbf{Feature Selection:} Quantified multicollinearity via Variance Inflation Factor ($\text{VIF}(\text{Open}) = 7{,}188.8$), eliminated pure stochastic noise ($\text{Sales}$: $\text{MI} = 0.0000$; $\text{weight}$: $\text{MI} = 0.0040$; both zeroed under Lasso $L_1$), and resolved collinearity into an orthogonal baseline ($\text{VIF} = 1.07$).
+    \item \textbf{Feature Engineering:} Synthesized eight strictly causal predictors. Notably, \texttt{HL\_Midpoint} lowered estimation MAE by $47.3\%$ relative to \texttt{Open}, while \texttt{Open\_to\_Mid\_Pct} achieved $r = +0.9213$ correlation ($\text{MI} = 1.39$ nats) with real intraday returns.
+\end{enumerate}
+
+\subsection{Comparative Evaluation Protocol across Feature Sets}
+To quantitatively evaluate feature usefulness for predicting $\text{Close}$ without violating temporal causality, four representative feature representations were benchmarked on a strict \textbf{chronological 80/20 train-test split} (Training: August 2000--January 2021, $N_{\text{train}} = 5{,}119$; Out-of-Sample Testing: February 2021--March 2026, $N_{\text{test}} = 1{,}280$):
+
+\begin{itemize}
+    \item \textbf{Set 1 --- Original Cleaned ($D = 6$):} Raw cleaned inputs $\{\text{Open}, \text{High}, \text{Low}, \text{Volume}, \text{Sales}, \text{weight}\}$ without scaling or transformation.
+    \item \textbf{Set 2 --- Transformed Hybrid ($D = 6$):} Logarithmic compression on $\{\text{Volume}, \text{weight}\}$ followed by Z-score standardization across all six attributes.
+    \item \textbf{Set 3 --- Selected Orthogonal ($D = 2$):} Minimal collinearity-free baseline $\{\text{Open}, \ln(1+\text{Volume})\}$ after pruning redundant OHLC bars and uninformative features, standardized via Z-score.
+    \item \textbf{Set 4 --- Final Engineered \& Selected ($D = 5$):} The curated production subset combining engineered equilibrium, directional bias, normalized volatility, and liquidity:
+    \begin{equation}
+        \mathbf{x}_{\text{Final}} = Z\Big(\big[ \text{HL\_Midpoint},\, \text{Open\_to\_Mid\_Pct},\, \ln(1 + 100\cdot\text{Relative\_Spread}),\, \ln(1 + 100\cdot\text{Open\_Volatility\_14}),\, \ln(1 + \text{Volume}) \big]^T\Big)
+    \end{equation}
+\end{itemize}
+
+Each feature set was evaluated across both \textbf{intrinsic numerical conditioning} (matrix condition number $\kappa(\mathbf{X})$, maximum VIF, mean absolute skewness) and \textbf{out-of-sample predictive probe performance} using a Linear Ridge probe ($\alpha = 1.0$) and a Multi-Layer Perceptron Neural Network probe ($\text{MLP}(64, 32)$ optimized with Adam, $\eta = 0.01$). Note that all scalers were fitted strictly on the 80\% training window and applied out-of-sample to guarantee zero look-ahead bias.
+
+\begin{table*}[t]
+\caption{Multi-Criteria Benchmark Comparing Feature Sets on Chronological 80/20 Split (Test Period: 2021--2026)}
+\label{tab:comparative_benchmark}
+\centering
+\small
+\begin{tabular}{lcrrrrrrrrr}
+\toprule
+\textbf{Feature Set} & \textbf{Dim} ($D$) & \textbf{Mean} $|\gamma_1|$ & $\text{VIF}_{\max}$ & $\boldsymbol{\kappa(\mathbf{X})}$ & \textbf{Ridge MAE} & \textbf{MLP MAE} & \textbf{MLP RMSE} & \textbf{MLP} $R^2$ & \textbf{Iters} & \textbf{Final Loss} \\
+\midrule
+1. Original (Raw Unscaled)     & 6 & 2.263 & 5,876.56 & 5,902.30 & \$6.03  & \$37.48 & \$114.54 & 0.97991 & 42  & 1,669.98 \\
+2. Transformed (Log + Z-Score) & 6 & \textbf{0.823} & 5,870.93 & 166.53   & \$8.47  & \$7.59  & \textbf{\$13.66}  & \textbf{0.99971} & 194 & 12.95    \\
+3. Selected Orthogonal         & \textbf{2} & 1.018 & \textbf{1.03}     & \textbf{1.20}     & \$16.46 & \$17.08 & \$32.51  & 0.99838 & 95  & 58.80    \\
+\textbf{4. Final Engineered \& Selected} & 5 & 0.866 & \textbf{1.30} & \textbf{1.71} & \$7.21 & \textbf{\$7.37} & \$14.62 & 0.99967 & \textbf{105} & \textbf{9.77} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Empirical Benchmark Findings}
+
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{../outputs/comparative/01_conditioning_and_skew_comparison.png}
+\caption{Numerical conditioning and distributional comparison across the four feature sets: (a) matrix condition number $\kappa(\mathbf{X})$, (b) maximum Variance Inflation Factor ($\text{VIF}_{\max}$), and (c) mean absolute skewness.}
+\label{fig:comp_conditioning}
+\end{figure*}
+
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=0.94\textwidth]{../outputs/comparative/02_mlp_convergence_and_error.png}
+\caption{Neural network diagnostic evaluation: (a) MLP training MSE loss convergence curves on a logarithmic scale, and (b) out-of-sample MAE and RMSE across the 2021--2026 test regime.}
+\label{fig:comp_mlp}
+\end{figure*}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{../outputs/comparative/03_pca_variance_comparison.png}
+\caption{Principal Component Analysis (PCA) cumulative explained variance ratio across feature sets, demonstrating representation efficiency.}
+\label{fig:comp_pca}
+\end{figure}
+
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=0.94\textwidth]{../outputs/comparative/comparative_ieee_synthesis.png}
+\caption{Global comparative synthesis: (a) matrix conditioning reduction, (b) neural optimization convergence curves, (c) chronological test error reduction, and (d) actual vs.\ predicted extrapolation trajectories across the 2024--2026 secular gold rally.}
+\label{fig:comp_synthesis}
+\end{figure*}
+
+Table~\ref{tab:comparative_benchmark} and Figs.~\ref{fig:comp_conditioning}--\ref{fig:comp_synthesis} establish four decisive empirical findings:
+
+\begin{enumerate}
+    \item \textbf{Catastrophic Failure of Unscaled Raw Data in Neural Models:} While linear Ridge regression achieves $\$6.03$ MAE on Set 1 via analytical matrix inversion, the gradient-based MLP probe suffers severe degradation ($\text{MAE} = \$37.48$, $\text{RMSE} = \$114.54$, $R^2 = 0.97991$). Its training stalls prematurely at 42 iterations with a massive MSE loss of $1{,}669.98$. As illustrated in Fig.~\ref{fig:comp_synthesis}(d), the unscaled MLP fails completely to extrapolate into the $\$5{,}000+$ price regime due to extreme Hessian ill-conditioning ($\kappa = 5{,}902.30$) and unscaled $\text{Volume}$ gradient domination.
+    \item \textbf{Transformative Impact of Scaling and Log Compression:} Moving from Set 1 to Set 2 lowers matrix conditioning by $97.2\%$ ($\kappa: 5{,}902.30 \to 166.53$) and reduces mean absolute skewness by $63.6\%$ ($2.263 \to 0.823$). Consequently, the MLP test MAE drops by \textbf{79.7\%} ($\$37.48 \to \$7.59$) and RMSE drops by \textbf{88.1\%} ($\$114.54 \to \$13.66$). However, Set 2 retains severe collinearity ($\text{VIF}_{\max} = 5{,}870.93$) and requires $194$ epochs to converge.
+    \item \textbf{Trade-off of Aggressive Orthogonal Pruning (Set 3):} Restricting inputs solely to $\{\text{Open}, \ln(\text{Volume})\}$ achieves near-perfect numerical conditioning ($\kappa = 1.20$, $\text{VIF}_{\max} = 1.03$). However, discarding intraday high-low price dynamics raises MLP MAE to $\$17.08$, confirming that session envelope information is essential for accurate close estimation.
+    \item \textbf{Superiority of the Final Engineered \& Selected Set (Set 4):} Set 4 unifies the advantages of every pipeline stage. With only $D = 5$ features, it attains near-ideal orthogonality ($\text{VIF}_{\max} = 1.30$, $\kappa = 1.71$---a $3{,}450\times$ improvement over raw inputs) while achieving the \textbf{lowest out-of-sample MLP MAE ($\$7.37$, an 80.3\% error reduction over Set 1)}, the \textbf{lowest training MSE loss ($9.77$)}, and \textbf{rapid convergence in just $105$ epochs} ($45.9\%$ fewer iterations than Set 2). Furthermore, PCA cumulative variance analysis (Fig.~\ref{fig:comp_pca}) reveals that Set 4 distributes variance evenly across its orthogonal principal axes rather than collapsing onto a single collinear vector.
+\end{enumerate}
+
 
 \section{Discussion}
+\label{sec:discussion}
+
+\subsection{Which Preprocessing and Engineering Steps Delivered the Greatest Utility?}
+Empirical benchmarking across all seven stages demonstrates that no single step operates in isolation; however, three transformations exerted disproportionate positive impact on downstream neural modeling:
+\begin{enumerate}
+    \item \textbf{Selective Logarithmic Compression + Z-Score Standardization:} Transforming raw \texttt{Volume} ($\gamma_1 = 7.62 \to 0.47$) and scaling all features to unit variance reduced matrix ill-conditioning by 7.2\%$ ($\kappa: 5{,}902 \to 166$) and eliminated gradient domination. This step alone cut MLP prediction MAE by 9.7\%$ ($$37.48 \to $7.59$). Equally important was the negative diagnostic on \texttt{Sales}, proving that uniform-like features must bypass logarithmic mapping to prevent artificial skew distortion.
+    \item \textbf{OHLC Envelope Fusion into \texttt{HL\_Midpoint} and \texttt{Open\_to\_Mid\_Pct}:} Standard feature selection revealed that supplying raw \texttt{Open}, \texttt{High}, and \texttt{Low} simultaneously produces catastrophic collinearity ($\text{VIF} > 7{,}100$). Instead of blindly pruning intraday information (which degraded Set 3 MAE to $$17.08$), condensing $\{\text{High}, \text{Low}\}$ into their midpoint and expressing opening deviation as a dimensionless percentage preserved complete intraday predictive power while slashing $\text{VIF}_{\max}$ to .30$.
+    \item \textbf{Pruning Stochastic Noise (\texttt{Sales} and \texttt{weight}):} Mutual Information (bash.000$ and bash.004$ nats) and Lasso $ sparsity decisively identified non-informative noise. Removing these attributes reduced input dimensionality from =6$ to =5$, allowing neural optimization to converge in 05$ epochs compared to 94$ epochs (5.9\%$ faster).
+\end{enumerate}
+
+\subsection{Methodological Challenges Encountered}
+\begin{itemize}
+    \item \textbf{Secular Non-Stationarity vs.\ Outlier Clipping:} Gold appreciated over 0\times$ between 2000 ($$255$) and 2026 ($$5{,}377$). Naive application of Tukey IQR outlier clipping would have truncated genuine market growth above $$3{,}261$, ruining the test window. Furthermore, standard tree ensembles (e.g., Random Forest) fail to extrapolate above historical training ceilings ($>$2{,}060$ in the 2000--2021 training split), necessitating neural or linear regression architectures capable of continuous trend extrapolation.
+    \item \textbf{Data Integrity Without Attrition:} Reconciling 31$ OHLC boundary errors and 37$ missing \texttt{Sales} entries without discarding trading days was vital to maintain chronological continuity for moving averages and rolling volatility estimation.
+    \item \textbf{Zero-Leakage Discipline:} Computing rolling metrics exclusively on lagged \texttt{Open} quotations prevented accidental forward-looking contamination from \texttt{Close}, ensuring valid out-of-sample generalization.
+\end{itemize}
+
+\subsection{Potential Improvements and Future Extensions}
+Future iterations extending this pipeline into full production trading or macroeconomic forecasting could incorporate:
+\begin{itemize}
+    \item \textbf{Exogenous Macroeconomic Regressors:} Integrating US Dollar Index (DXY), 10-year Treasury real yields (TIPS), and Consumer Price Index (CPI) shocks to capture structural macro drivers beyond endogenous OHLC series.
+    \item \textbf{Target Differencing for Sequence Architectures:} While this study validated absolute $\text{Close}$ forecasting, predicting stationary daily log-returns ($\ln(\text{Close}_t / \text{Close}_{t-1})$) or multi-horizon volatility via Long Short-Term Memory (LSTM) networks and Temporal Fusion Transformers (TFT) can further eliminate non-stationary regime drift.
+\end{itemize}
 
 \section{Conclusion}
+\label{sec:conclusion}
+
+This work demonstrated a disciplined, end-to-end Python pipeline transforming raw, heterogeneous financial records (\texttt{Gold\_data.csv}, =6{,}399$) into an optimized five-dimensional neural feature space. Through rigorous data cleaning, 26-plot exploratory analysis, selective logarithmic transformation, VIF/MI/Lasso selection, and causal financial feature engineering, the input representation achieved near-ideal numerical orthogonality ($\kappa = 1.71$, $\text{VIF}_{\max} = 1.30$) with zero data attrition.
+
+Crucially, chronological 80/20 out-of-sample benchmarking validated that curated feature engineering directly translates into superior neural network performance: the final engineered feature set achieved an 0.3\%$ reduction in MLP Mean Absolute Error ($$37.48 \to $7.37$), an 7.2\%$ reduction in Root Mean Squared Error ($$114.54 \to $14.62$), and a 9.4\%$ drop in final training MSE loss ({,}669.98 \to 9.77$) with nearly twice the convergence speed. Consequently, the curated representation $\{ \text{HL\_Midpoint}, \text{Open\_to\_Mid\_Pct}, \ln(\text{Relative\_Spread}), \ln(\text{Open\_Volatility\_14}), \ln(\text{Volume}) \}$ provides a mathematically sound foundation for training deep Multi-Layer Perceptrons, 1D-CNNs, and LSTM forecasting architectures.
 
 \begin{thebibliography}{00}
-\bibitem{b1}
-
+\bibitem{b1} I. Goodfellow, Y. Bengio, and A. Courville, \textit{Deep Learning}. Cambridge, MA, USA: MIT Press, 2016.
+\bibitem{b2} I. Guyon and A. Elisseeff, An introduction to variable and feature selection,'' \textit{Journal of Machine Learning Research}, vol. 3, pp. 1157--1182, Mar. 2003.
+\bibitem{b3} R. Cont, Empirical properties of asset returns: stylized facts and statistical issues,'' \textit{Quantitative Finance}, vol. 1, no. 2, pp. 223--236, Feb. 2001.
+\bibitem{b4} Y. Amihud, Illiquidity and stock returns: cross-section and time-series effects,'' \textit{Journal of Financial Markets}, vol. 5, no. 1, pp. 31--56, Jan. 2002.
+\bibitem{b5} F. Pedregosa et al., Scikit-learn: Machine learning in Python,'' \textit{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, Oct. 2011.
 \end{thebibliography}
 
 \end{document}
